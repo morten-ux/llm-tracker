@@ -267,12 +267,23 @@ function checkMentions(text, brands) {
 }
 
 function highlightBrands(text, brands) {
+  text = cleanMarkdown(text);
   if (!brands.length || !text) return escapeHtml(text);
   const escaped = brands.map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const regex = new RegExp(`(${escaped.join("|")})`, "gi");
   return escapeHtml(text).replace(new RegExp(`(${escaped.map(b => escapeHtml(b)).join("|")})`, "gi"), "<mark>$1</mark>");
 }
 
+function cleanMarkdown(str) {
+  if (!str) return str;
+  return str
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^\s*[-*+]\s+/gm, '• ')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .trim();
+}
 function escapeHtml(str) {
   return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
