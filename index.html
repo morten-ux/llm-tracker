@@ -312,7 +312,9 @@ async function runTest() {
   ];
 
   const runResults = [];
-  for (const prompt of prompts) {
+  for (let pi = 0; pi < prompts.length; pi++) {
+    if (pi > 0) await new Promise(r => setTimeout(r, 4000));
+    const prompt = prompts[pi];
     const promptResults = { prompt, responses: [] };
     for (const llm of llms) {
       if (!llm.enabled) { promptResults.responses.push({ llm: llm.name, text: null, mentionedBrands: [], skipped: true }); continue; }
