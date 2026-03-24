@@ -277,7 +277,7 @@ function highlightBrands(text, brands) {
 function cleanMarkdown(str) {
   if (!str) return str;
   return str
-    .replace(/#{1,6}\s+/g, '')
+    .replace(/#{1,6} /g, '')
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/^\s*[-*+]\s+/gm, '• ')
