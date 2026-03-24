@@ -370,10 +370,10 @@ function renderResults(entry, brands) {
       html += `<div class="llm-response"><div class="llm-row"><span class="llm-name">${resp.llm}</span>${badge}</div>`;
       if (resp.text && !resp.skipped) {
         const cleaned = resp.text
-          .replace(/#{1,6}\s+/g, '')
-          .replace(/\*\*(.+?)\*\*/g, '$1')
-          .replace(/\*(.+?)\*/g, '$1')
-          .replace(/^\s*[-*+]\s+/gm, '• ');
+          .replace(/#{1,6} /g, '')
+          .replace(/**(.+?)**/g, '$1')
+          .replace(/*(.+?)*/g, '$1')
+          .replace(/^[ 	]*[-*+] /gm, '• ');
         html += `<p class="response-text">${highlightBrands(cleaned, brands)}</p>`;
       }
       html += `</div>`;
