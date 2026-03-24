@@ -368,7 +368,14 @@ function renderResults(entry, brands) {
       else if (resp.mentionedBrands.length > 0) badge = `<span class="badge badge-green">✓ ${escapeHtml(resp.mentionedBrands.join(", "))}</span>`;
       else badge = `<span class="badge badge-red">✗ Niet vermeld</span>`;
       html += `<div class="llm-response"><div class="llm-row"><span class="llm-name">${resp.llm}</span>${badge}</div>`;
-      if (resp.text && !resp.skipped) html += `<p class="response-text">${highlightBrands(resp.text, brands)}</p>`;
+      if (resp.text && !resp.skipped) {
+        const cleaned = resp.text
+          .replace(/#{1,6}\s+/g, '')
+          .replace(/\*\*(.+?)\*\*/g, '$1')
+          .replace(/\*(.+?)\*/g, '$1')
+          .replace(/^\s*[-*+]\s+/gm, '• ');
+        html += `<p class="response-text">${highlightBrands(cleaned, brands)}</p>`;
+      }
       html += `</div>`;
     }
     html += `</div>`;
