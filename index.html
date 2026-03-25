@@ -1,301 +1,22 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LLM Brand Mention Tracker</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f2f8; color: #0f172a; min-height: 100vh; display: flex; }
-
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 228px; min-height: 100vh; background: white;
-    border-right: 1px solid #e8eaf0; display: flex; flex-direction: column;
-    position: fixed; top: 0; left: 0; bottom: 0; z-index: 10;
-    box-shadow: 1px 0 8px rgba(0,0,0,0.04);
-  }
-  .sidebar-logo {
-    padding: 22px 20px 18px;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .sidebar-logo .logo-mark {
-    display: flex; align-items: center; gap: 9px;
-  }
-  .logo-icon {
-    width: 32px; height: 32px; background: linear-gradient(135deg,#6366f1,#8b5cf6);
-    border-radius: 9px; display: flex; align-items: center; justify-content: center;
-    font-size: 15px; flex-shrink: 0;
-  }
-  .logo-text { font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.2; }
-  .logo-sub { font-size: 11px; color: #94a3b8; font-weight: 400; }
-
-  .sidebar-nav { flex: 1; padding: 14px 10px; overflow-y: auto; }
-  .nav-section { margin-bottom: 20px; }
-  .nav-label {
-    font-size: 10px; font-weight: 700; color: #cbd5e1; text-transform: uppercase;
-    letter-spacing: 0.08em; padding: 0 10px; margin-bottom: 4px;
-  }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: 9px; cursor: pointer;
-    font-size: 13px; font-weight: 500; color: #64748b;
-    transition: background 0.12s, color 0.12s; user-select: none;
-    border: none; background: none; width: 100%; text-align: left;
-  }
-  .nav-item:hover { background: #f8fafc; color: #374151; }
-  .nav-item.active { background: #eef2ff; color: #6366f1; font-weight: 600; }
-  .nav-icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  .nav-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.12s; }
-  .nav-badge {
-    margin-left: auto; background: #fee2e2; color: #dc2626;
-    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px;
-  }
-  .nav-badge-blue {
-    margin-left: auto; background: #eef2ff; color: #6366f1;
-    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px;
-  }
-
-  .sidebar-footer {
-    padding: 12px 10px; border-top: 1px solid #f1f5f9;
-  }
-
-  /* ── Main ── */
-  .main { margin-left: 228px; flex: 1; min-height: 100vh; padding: 36px 36px 60px; }
-
-  /* ── Module pages ── */
-  .module-page { display: none; }
-  .module-page.active { display: block; }
-
-  .page-header { margin-bottom: 28px; }
-  .page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: #0f172a; }
-  .page-header p { font-size: 14px; color: #64748b; margin-top: 5px; }
-
-  /* ── Cards ── */
-  .card { background: white; border-radius: 16px; border: 1px solid #e8eaf0; box-shadow: 0 1px 4px rgba(0,0,0,0.05); padding: 24px; }
-  .card + .card { margin-top: 16px; }
-
-  /* ── Stat grid ── */
-  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
-  .stat-card {
-    background: white; border: 1px solid #e8eaf0; border-radius: 14px;
-    padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  }
-  .stat-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
-  .stat-value { font-size: 26px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; }
-  .stat-delta { font-size: 12px; margin-top: 4px; font-weight: 500; }
-  .delta-up { color: #15803d; }
-  .delta-down { color: #dc2626; }
-
-  /* ── Mini chart bars ── */
-  .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 40px; margin-top: 10px; }
-  .bar { flex: 1; background: #eef2ff; border-radius: 4px 4px 0 0; transition: background 0.15s; }
-  .bar:hover { background: #6366f1; }
-  .bar.hi { background: #c7d2fe; }
-
-  /* ── Tables ── */
-  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .data-table th {
-    padding: 10px 14px; text-align: left; color: #94a3b8;
-    font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
-    border-bottom: 1.5px solid #e8eaf0; background: #f8fafc;
-  }
-  .data-table td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; font-weight: 500; color: #374151; }
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table tr:hover td { background: #fafbff; }
-  .table-card { border: 1.5px solid #e8eaf0; border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
-
-  /* ── Progress bars ── */
-  .prog-row { margin-bottom: 14px; }
-  .prog-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-  .prog-track { height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
-  .prog-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg,#6366f1,#8b5cf6); }
-
-  /* ── Grid 2 ── */
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-
-  /* ── Badges ── */
-  .badge { padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-  .badge-green { background: #dcfce7; color: #15803d; }
-  .badge-red { background: #fee2e2; color: #dc2626; }
-  .badge-gray { background: #f1f5f9; color: #94a3b8; }
-  .badge-blue { background: #eef2ff; color: #6366f1; }
-  .badge-yellow { background: #fef9c3; color: #854d0e; }
-
-  /* ── Alert items ── */
-  .alert-item {
-    display: flex; align-items: flex-start; gap: 14px;
-    padding: 14px 0; border-bottom: 1px solid #f1f5f9;
-  }
-  .alert-item:last-child { border-bottom: none; }
-  .alert-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
-  .alert-dot-red { background: #ef4444; }
-  .alert-dot-yellow { background: #f59e0b; }
-  .alert-dot-green { background: #22c55e; }
-  .alert-title { font-size: 13px; font-weight: 600; color: #1e293b; }
-  .alert-meta { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-
-  /* ── Section title ── */
-  .section-title { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-  .card-sub { font-size: 13px; color: #64748b; margin-bottom: 18px; }
-
-  /* ── Tabs (brand tracker) ── */
-  .tabs { display: flex; gap: 2px; margin-bottom: 24px; background: #f1f5f9; border-radius: 12px; padding: 4px; width: fit-content; }
-  .tab {
-    padding: 7px 20px; border: none; background: none; cursor: pointer;
-    font-size: 13px; font-weight: 500; color: #64748b; border-radius: 9px;
-    transition: background 0.15s, color 0.15s;
-  }
-  .tab.active { background: white; color: #6366f1; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  .tab:not(.active):hover { color: #374151; background: rgba(255,255,255,0.5); }
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* ── Form ── */
-  label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 6px; }
-  label span { font-weight: 400; color: #94a3b8; }
-  input, textarea {
-    width: 100%; padding: 10px 13px; border: 1.5px solid #e2e8f0;
-    border-radius: 10px; font-size: 14px; font-family: inherit;
-    background: #fafbfc; color: #0f172a;
-    transition: border-color 0.15s, box-shadow 0.15s; outline: none;
-  }
-  input:focus, textarea:focus {
-    border-color: #6366f1; background: white; box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
-  }
-  input[type=password] { letter-spacing: 3px; }
-  textarea { min-height: 80px; resize: vertical; }
-  .form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .field { margin-bottom: 18px; }
-
-  /* ── Tags ── */
-  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
-  .tag { background: #eef2ff; color: #6366f1; padding: 3px 11px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-
-  /* ── Buttons ── */
-  .btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: #6366f1; color: white; border: none;
-    border-radius: 10px; padding: 11px 26px; font-size: 14px; font-weight: 600;
-    cursor: pointer; transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
-    box-shadow: 0 2px 8px rgba(99,102,241,0.25);
-  }
-  .btn:hover:not(:disabled) { background: #4f46e5; box-shadow: 0 4px 14px rgba(99,102,241,0.35); transform: translateY(-1px); }
-  .btn:active:not(:disabled) { transform: translateY(0); }
-  .btn:disabled { background: #c7d2fe; cursor: not-allowed; box-shadow: none; }
-  .btn-ghost {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: white; border: 1.5px solid #e2e8f0; color: #374151;
-    border-radius: 10px; padding: 9px 18px; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .btn-ghost:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(99,102,241,0.1); }
-  .btn-danger {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: none; border: 1.5px solid #fecaca; color: #ef4444;
-    border-radius: 10px; padding: 7px 16px; font-size: 13px; font-weight: 600;
-    cursor: pointer; margin-top: 12px; transition: background 0.15s;
-  }
-  .btn-danger:hover { background: #fff5f5; }
-
-  /* ── Alerts/warnings ── */
-  .warning {
-    display: flex; align-items: center; gap: 8px; font-size: 13px; color: #92400e;
-    background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
-    padding: 10px 14px; margin-bottom: 18px; font-weight: 500;
-  }
-  .error {
-    display: flex; align-items: center; gap: 8px;
-    color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca;
-    border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; font-weight: 500;
-  }
-
-  /* ── Prompt list ── */
-  .prompt-list { background: #f8fafc; border: 1.5px solid #e8eaf0; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
-  .prompt-list p { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
-  .prompt-list li { font-size: 13px; color: #475569; margin: 5px 0; list-style: none; line-height: 1.5; }
-  .prompt-list li::before { content: "›  "; color: #a5b4fc; font-weight: 700; }
-
-  /* ── Summary table ── */
-  .summary-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; border-radius: 12px; overflow: hidden; border: 1.5px solid #e8eaf0; }
-  .summary-table th { padding: 11px 16px; text-align: left; color: #94a3b8; background: #f8fafc; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1.5px solid #e8eaf0; }
-  .summary-table th:not(:first-child) { text-align: center; }
-  .summary-table td { padding: 11px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; }
-  .summary-table td:not(:first-child) { text-align: center; }
-  .summary-table tr:last-child td { border-bottom: none; }
-  .green { color: #15803d; }
-  .red { color: #dc2626; }
-
-  /* ── Prompt blocks ── */
-  .prompt-block { border: 1.5px solid #e8eaf0; border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
-  .prompt-header { background: #f8fafc; padding: 11px 18px; border-bottom: 1px solid #e8eaf0; font-size: 13px; font-weight: 600; color: #475569; }
-  .llm-response { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; }
-  .llm-response:last-child { border-bottom: none; }
-  .llm-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .llm-name { font-size: 13px; font-weight: 700; color: #1e293b; }
-  .badge-green2 { background: #dcfce7; color: #15803d; font-weight: 600; }
-  .badge-red2 { background: #fee2e2; color: #dc2626; }
-  .response-text { font-size: 13px; color: #475569; line-height: 1.7; white-space: pre-wrap; }
-  mark { background: #fef08a; border-radius: 3px; padding: 0 2px; font-weight: 700; color: #713f12; }
-
-  /* ── History ── */
-  .history-card { border: 1.5px solid #e8eaf0; border-radius: 14px; padding: 18px; margin-bottom: 14px; background: white; transition: box-shadow 0.15s; }
-  .history-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-  .history-meta { font-size: 12px; color: #94a3b8; margin-top: 6px; }
-  .history-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 14px; }
-  .history-table th { text-align: left; color: #94a3b8; font-weight: 700; padding: 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .history-table th:not(:first-child) { text-align: center; }
-  .history-table td { padding: 4px 0; font-weight: 600; }
-  .history-table td:not(:first-child) { text-align: center; }
-
-  /* ── Misc ── */
-  .hint { font-size: 12px; color: #94a3b8; margin-top: 10px; }
-  .checkbox-row { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; color: #374151; cursor: pointer; margin-bottom: 8px; }
-  .checkbox-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
-  .settings-description { font-size: 14px; color: #64748b; margin-bottom: 22px; line-height: 1.6; }
-  .settings-section-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
-
-  /* ── Toggle switch ── */
-  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-  .toggle-row:last-child { border-bottom: none; }
-  .toggle-label { font-size: 13px; font-weight: 600; color: #374151; }
-  .toggle-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-  .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider {
-    position: absolute; inset: 0; background: #e2e8f0; border-radius: 99px; cursor: pointer; transition: background 0.2s;
-  }
-  .toggle-slider::before {
-    content: ""; position: absolute; left: 2px; top: 2px;
-    width: 16px; height: 16px; background: white; border-radius: 50%;
-    transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  }
-  .toggle input:checked + .toggle-slider { background: #6366f1; }
-  .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
-
-  /* ── Keyword chip ── */
-  .keyword-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px;
-    padding: 7px 13px; font-size: 13px; font-weight: 500; color: #374151;
-    margin: 4px;
-  }
-  .chip-count { background: #eef2ff; color: #6366f1; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
-
-  /* ── Trend line (fake SVG) ── */
-  .sparkline { display: flex; align-items: center; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Brand Mention Tracker</title>
+  <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
 
-<!-- ════════════════════════════ SIDEBAR ════════════════════════════ -->
+<!-- ── Sidebar ── -->
 <nav class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-mark">
-      <div class="logo-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="4"/><circle cx="11" cy="11" r="8" stroke-opacity=".4"/><path d="m21 21-4.35-4.35"/></svg></div>
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
       <div>
         <div class="logo-text">LLM Tracker</div>
         <div class="logo-sub">Brand Intelligence</div>
@@ -304,889 +25,196 @@
   </div>
 
   <div class="sidebar-nav">
+
+    <!-- Core -->
     <div class="nav-section">
-      <div class="nav-label">Core</div>
-      <button class="nav-item active" onclick="switchModule('brand-tracker')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg></span> Brand Tracker
-      </button>
-      <button class="nav-item" onclick="switchModule('analytics')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
-      </button>
+      <span class="nav-label">Core</span>
+      <div class="nav-item active" data-module="brand-tracker" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        Brand Tracker
+      </div>
+      <div class="nav-item" data-module="analytics" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+        </span>
+        Analytics
+      </div>
     </div>
 
+    <!-- Intelligence -->
     <div class="nav-section">
-      <div class="nav-label">Intelligence</div>
-      <button class="nav-item" onclick="switchModule('competitors')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Competitors
-      </button>
-      <button class="nav-item" onclick="switchModule('keywords')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span> Keywords
-      </button>
-      <button class="nav-item" onclick="switchModule('sentiment')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg></span> Sentiment
-      </button>
+      <span class="nav-label">Intelligence</span>
+      <div class="nav-item" data-module="competitors" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </span>
+        Competitors
+      </div>
+      <div class="nav-item" data-module="keywords" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </span>
+        Keywords
+      </div>
+      <div class="nav-item" data-module="sentiment" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 13s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </span>
+        Sentiment
+      </div>
     </div>
 
+    <!-- Workflow -->
     <div class="nav-section">
-      <div class="nav-label">Workflow</div>
-      <button class="nav-item" onclick="switchModule('alerts')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span> Alerts
-        <span class="nav-badge">3</span>
-      </button>
-      <button class="nav-item" onclick="switchModule('reports')">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span> Reports
+      <span class="nav-label">Workflow</span>
+      <div class="nav-item" data-module="alerts" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+        </span>
+        Alerts
+        <span class="nav-badge" id="sidebar-alerts-badge">3</span>
+      </div>
+      <div class="nav-item" data-module="reports" onclick="App.navigate(this.dataset.module)">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+            <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+            <path d="M10 9H8"/>
+            <path d="M16 13H8"/>
+            <path d="M16 17H8"/>
+          </svg>
+        </span>
+        Reports
         <span class="nav-badge-blue">New</span>
-      </button>
+      </div>
     </div>
-  </div>
+
+  </div><!-- /.sidebar-nav -->
 
   <div class="sidebar-footer">
-    <button class="nav-item" onclick="switchModule('settings')">
-      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span> Settings
-    </button>
+    <div class="nav-item" data-module="settings" onclick="App.navigate(this.dataset.module)">
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </span>
+      Settings
+    </div>
   </div>
 </nav>
 
-<!-- ════════════════════════════ MAIN ════════════════════════════ -->
-<main class="main">
+<!-- ── App right ── -->
+<div class="app-right">
 
-  <!-- ── BRAND TRACKER ── -->
-  <div id="module-brand-tracker" class="module-page active">
-    <div class="page-header">
-      <h1>Brand Tracker</h1>
-      <p>Test of jouw brands worden vermeld in ChatGPT, Gemini en Claude</p>
+  <!-- Topbar -->
+  <header class="topbar">
+    <span id="topbar-title" class="topbar-title">Brand Tracker</span>
+
+    <div class="topbar-search-wrap">
+      <span class="topbar-search-icon">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </span>
+      <input type="text" id="topbar-search" class="topbar-search" placeholder="Zoek modules..." autocomplete="off" />
+      <div class="search-dropdown" id="search-dropdown"></div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('run')">Run</button>
-      <button class="tab" onclick="switchTab('history')">History</button>
-    </div>
+    <div class="topbar-spacer"></div>
 
-    <div id="panel-run" class="panel active">
-      <div class="card">
-        <div class="field">
-          <label>Brand namen <span>(meerdere? scheid met komma)</span></label>
-          <input type="text" id="brands" placeholder="e.g. Skinlab, Glow Clinic, beautyXL" oninput="updateTags()">
-          <div class="tags" id="tags"></div>
-        </div>
-        <div class="form-grid2">
-          <div class="field">
-            <label>Behandeling</label>
-            <input type="text" id="treatment" placeholder="e.g. botox" oninput="updatePrompts()">
+    <div class="topbar-actions">
+      <!-- Notification button -->
+      <button class="topbar-icon-btn" id="notif-btn" title="Alerts">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+        </svg>
+        <span class="topbar-notif-badge" id="notif-badge">3</span>
+      </button>
+
+      <!-- Avatar -->
+      <div class="topbar-avatar-wrap">
+        <div class="topbar-avatar" id="topbar-avatar" title="Account">M</div>
+        <div class="avatar-dropdown" id="avatar-dropdown">
+          <div class="avatar-profile">
+            <div class="avatar-name">Morten Muijsers</div>
+            <div class="avatar-email">morten@example.com</div>
           </div>
-          <div class="field">
-            <label>Stad</label>
-            <input type="text" id="city" placeholder="e.g. Amsterdam" oninput="updatePrompts()">
+          <div class="avatar-menu-item" data-avatar-action="settings">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Instellingen
           </div>
-        </div>
-
-        <div class="field">
-          <label class="checkbox-row">
-            <input type="checkbox" id="useCustom" onchange="toggleCustom()"> Gebruik een eigen prompt
-          </label>
-          <textarea id="customPrompt" placeholder="Typ hier je eigen prompt..." style="display:none"></textarea>
-        </div>
-
-        <div class="prompt-list" id="promptPreview" style="display:none">
-          <p id="promptCount"></p>
-          <ul id="promptList"></ul>
-        </div>
-
-        <div class="error" id="error" style="display:none">⚠ <span id="errorMsg"></span></div>
-        <div class="warning" id="noKeyWarning">⚠ Geen API keys — alleen Claude wordt bevraagd. Voeg keys toe in Settings.</div>
-
-        <button class="btn" id="runBtn" onclick="runTest()">▶ Test uitvoeren</button>
-      </div>
-      <div id="results" style="margin-top:24px;display:none"></div>
-    </div>
-
-    <div id="panel-history" class="panel">
-      <div id="historyContent"></div>
-    </div>
-  </div>
-
-  <!-- ── ANALYTICS ── -->
-  <div id="module-analytics" class="module-page">
-    <div class="page-header">
-      <h1>Analytics</h1>
-      <p>Trends en statistieken over brand mentions in de afgelopen 30 dagen</p>
-    </div>
-
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-label">Totaal mentions</div>
-        <div class="stat-value">347</div>
-        <div class="stat-delta delta-up">↑ 18% vs vorige maand</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Gemiddeld %</div>
-        <div class="stat-value">62%</div>
-        <div class="stat-delta delta-up">↑ 5 pp</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Beste LLM</div>
-        <div class="stat-value" style="font-size:18px">Claude</div>
-        <div class="stat-delta" style="color:#64748b">78% mention rate</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Runs deze maand</div>
-        <div class="stat-value">24</div>
-        <div class="stat-delta delta-down">↓ 2 vs vorige maand</div>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div class="card">
-        <div class="card-title">Mention rate per LLM</div>
-        <div class="card-sub">Gemiddeld over alle brands en prompts</div>
-        <div class="prog-row">
-          <div class="prog-label"><span>Claude</span><span>78%</span></div>
-          <div class="prog-track"><div class="prog-fill" style="width:78%"></div></div>
-        </div>
-        <div class="prog-row">
-          <div class="prog-label"><span>ChatGPT</span><span>61%</span></div>
-          <div class="prog-track"><div class="prog-fill" style="width:61%;background:linear-gradient(90deg,#22c55e,#16a34a)"></div></div>
-        </div>
-        <div class="prog-row">
-          <div class="prog-label"><span>Gemini</span><span>47%</span></div>
-          <div class="prog-track"><div class="prog-fill" style="width:47%;background:linear-gradient(90deg,#f59e0b,#d97706)"></div></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Mentions over tijd</div>
-        <div class="card-sub">Afgelopen 12 weken</div>
-        <div class="bar-chart">
-          <div class="bar" style="height:35%"></div>
-          <div class="bar" style="height:48%"></div>
-          <div class="bar" style="height:42%"></div>
-          <div class="bar hi" style="height:60%"></div>
-          <div class="bar" style="height:55%"></div>
-          <div class="bar" style="height:50%"></div>
-          <div class="bar hi" style="height:72%"></div>
-          <div class="bar" style="height:65%"></div>
-          <div class="bar" style="height:70%"></div>
-          <div class="bar hi" style="height:85%"></div>
-          <div class="bar" style="height:78%"></div>
-          <div class="bar" style="height:90%"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-top:6px">
-          <span>Jan</span><span>Feb</span><span>Mrt</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table class="data-table">
-        <thead><tr>
-          <th>Brand</th><th>Claude</th><th>ChatGPT</th><th>Gemini</th><th>Gem. score</th><th>Trend</th>
-        </tr></thead>
-        <tbody>
-          <tr><td><strong>Skinlab</strong></td><td class="green">11/14</td><td class="green">8/14</td><td>6/14</td><td><span class="badge badge-green">78%</span></td><td class="green">↑ +12%</td></tr>
-          <tr><td><strong>Glow Clinic</strong></td><td class="green">9/14</td><td>5/14</td><td class="green">7/14</td><td><span class="badge badge-blue">60%</span></td><td class="green">↑ +4%</td></tr>
-          <tr><td><strong>beautyXL</strong></td><td>4/14</td><td>3/14</td><td>2/14</td><td><span class="badge badge-red">21%</span></td><td class="red">↓ −8%</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ── COMPETITORS ── -->
-  <div id="module-competitors" class="module-page">
-    <div class="page-header">
-      <h1>Competitors</h1>
-      <p>Vergelijk jouw brand mentions met die van concurrenten</p>
-    </div>
-
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-label">Gevolgde concurrenten</div>
-        <div class="stat-value">6</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Jouw rank</div>
-        <div class="stat-value">#2</div>
-        <div class="stat-delta delta-up">↑ 1 positie</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Top concurrent</div>
-        <div class="stat-value" style="font-size:16px">Kliniek XYZ</div>
-        <div class="stat-delta" style="color:#64748b">82% rate</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Gap to #1</div>
-        <div class="stat-value">−4%</div>
-        <div class="stat-delta delta-up">Verkleind met 2pp</div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table class="data-table">
-        <thead><tr><th>Concurrent</th><th>Claude</th><th>ChatGPT</th><th>Gemini</th><th>Totaal score</th><th>Status</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Kliniek XYZ</strong></td><td>13/14</td><td>12/14</td><td>10/14</td><td><span class="badge badge-red">82%</span></td><td><span class="badge badge-yellow">Marktleider</span></td></tr>
-          <tr><td><strong>Skinlab ⭐</strong></td><td class="green">11/14</td><td class="green">8/14</td><td>6/14</td><td><span class="badge badge-blue">78%</span></td><td><span class="badge badge-green">Jij</span></td></tr>
-          <tr><td><strong>Beauté Studio</strong></td><td>8/14</td><td>7/14</td><td>6/14</td><td><span class="badge badge-gray">60%</span></td><td>–</td></tr>
-          <tr><td><strong>LaserPoint</strong></td><td>6/14</td><td>5/14</td><td>4/14</td><td><span class="badge badge-gray">45%</span></td><td>–</td></tr>
-          <tr><td><strong>GlowMed</strong></td><td>4/14</td><td>3/14</td><td>2/14</td><td><span class="badge badge-gray">31%</span></td><td>–</td></tr>
-          <tr><td><strong>DermaCure</strong></td><td>2/14</td><td>1/14</td><td>1/14</td><td><span class="badge badge-gray">10%</span></td><td>–</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Concurrentie per LLM</div>
-      <div class="card-sub">Mention share verdeeld over ChatGPT, Claude en Gemini</div>
-      <div class="grid3" style="margin-top:16px">
-        <div>
-          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px">Claude</div>
-          <div class="prog-row"><div class="prog-label"><span>Kliniek XYZ</span><span>93%</span></div><div class="prog-track"><div class="prog-fill" style="width:93%;background:linear-gradient(90deg,#ef4444,#dc2626)"></div></div></div>
-          <div class="prog-row"><div class="prog-label"><span>Skinlab</span><span>79%</span></div><div class="prog-track"><div class="prog-fill" style="width:79%"></div></div></div>
-          <div class="prog-row"><div class="prog-label"><span>Beauté Studio</span><span>57%</span></div><div class="prog-track"><div class="prog-fill" style="width:57%;background:linear-gradient(90deg,#94a3b8,#64748b)"></div></div></div>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px">ChatGPT</div>
-          <div class="prog-row"><div class="prog-label"><span>Kliniek XYZ</span><span>86%</span></div><div class="prog-track"><div class="prog-fill" style="width:86%;background:linear-gradient(90deg,#ef4444,#dc2626)"></div></div></div>
-          <div class="prog-row"><div class="prog-label"><span>Skinlab</span><span>57%</span></div><div class="prog-track"><div class="prog-fill" style="width:57%"></div></div></div>
-          <div class="prog-row"><div class="prog-label"><span>Beauté Studio</span><span>50%</span></div><div class="prog-track"><div class="prog-fill" style="width:50%;background:linear-gradient(90deg,#94a3b8,#64748b)"></div></div></div>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px">Gemini</div>
-          <div class="prog-row"><div class="prog-label"><span>Kliniek XYZ</span><span>71%</span></div><div class="prog-track"><div class="prog-fill" style="width:71%;background:linear-gradient(90deg,#ef4444,#dc2626)"></div></div></div>
-          <div class="prog-row"><div class="prog-label"><span>Skinlab</span><span>43%</span></div><div class="prog-track"><div class="prog-fill" style="width:43%"></div></div></div>
-          <div class="prog-row"><div class="prog-label"><span>Beauté Studio</span><span>43%</span></div><div class="prog-track"><div class="prog-fill" style="width:43%;background:linear-gradient(90deg,#94a3b8,#64748b)"></div></div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── KEYWORDS ── -->
-  <div id="module-keywords" class="module-page">
-    <div class="page-header">
-      <h1>Keywords</h1>
-      <p>Welke zoekopdrachten leveren de meeste mentions op?</p>
-    </div>
-
-    <div class="grid2">
-      <div class="card">
-        <div class="card-title">Top keywords</div>
-        <div class="card-sub">Gebaseerd op mention rate over alle runs</div>
-        <div style="margin-top:4px">
-          <span class="keyword-chip">botox amsterdam <span class="chip-count">94%</span></span>
-          <span class="keyword-chip">filler amsterdam <span class="chip-count">87%</span></span>
-          <span class="keyword-chip">beste kliniek amsterdam <span class="chip-count">81%</span></span>
-          <span class="keyword-chip">botox behandeling <span class="chip-count">74%</span></span>
-          <span class="keyword-chip">lip filler <span class="chip-count">68%</span></span>
-          <span class="keyword-chip">huidverbetering <span class="chip-count">62%</span></span>
-          <span class="keyword-chip">anti-aging kliniek <span class="chip-count">55%</span></span>
-          <span class="keyword-chip">laser behandeling <span class="chip-count">48%</span></span>
-          <span class="keyword-chip">microneedling amsterdam <span class="chip-count">41%</span></span>
-          <span class="keyword-chip">skin clinic <span class="chip-count">37%</span></span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Onderpresterende keywords</div>
-        <div class="card-sub">Lage mention rate — kans op verbetering</div>
-        <div style="margin-top:4px">
-          <span class="keyword-chip" style="border-color:#fecaca;background:#fff5f5">skincare routine <span class="chip-count" style="background:#fee2e2;color:#dc2626">12%</span></span>
-          <span class="keyword-chip" style="border-color:#fecaca;background:#fff5f5">cosmetische kliniek <span class="chip-count" style="background:#fee2e2;color:#dc2626">18%</span></span>
-          <span class="keyword-chip" style="border-color:#fecaca;background:#fff5f5">gezichtsbehandeling <span class="chip-count" style="background:#fee2e2;color:#dc2626">21%</span></span>
-          <span class="keyword-chip" style="border-color:#fecaca;background:#fff5f5">huidkliniek rotterdam <span class="chip-count" style="background:#fee2e2;color:#dc2626">9%</span></span>
-          <span class="keyword-chip" style="border-color:#fecaca;background:#fff5f5">peeling behandeling <span class="chip-count" style="background:#fee2e2;color:#dc2626">14%</span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table class="data-table">
-        <thead><tr><th>Keyword</th><th>Taal</th><th>Claude</th><th>ChatGPT</th><th>Gemini</th><th>Gem. rate</th></tr></thead>
-        <tbody>
-          <tr><td>botox amsterdam</td><td><span class="badge badge-gray">NL</span></td><td class="green">94%</td><td class="green">91%</td><td class="green">88%</td><td><span class="badge badge-green">91%</span></td></tr>
-          <tr><td>beste botox amsterdam</td><td><span class="badge badge-gray">NL</span></td><td class="green">87%</td><td class="green">82%</td><td>74%</td><td><span class="badge badge-green">81%</span></td></tr>
-          <tr><td>best botox amsterdam</td><td><span class="badge badge-blue">EN</span></td><td class="green">80%</td><td class="green">78%</td><td>65%</td><td><span class="badge badge-blue">74%</span></td></tr>
-          <tr><td>botox kliniek amsterdam</td><td><span class="badge badge-gray">NL</span></td><td>71%</td><td>68%</td><td>55%</td><td><span class="badge badge-yellow">65%</span></td></tr>
-          <tr><td>Where to get botox Amsterdam</td><td><span class="badge badge-blue">EN</span></td><td>60%</td><td>57%</td><td>42%</td><td><span class="badge badge-yellow">53%</span></td></tr>
-          <tr><td>cosmetische kliniek amsterdam</td><td><span class="badge badge-gray">NL</span></td><td>22%</td><td class="red">18%</td><td class="red">14%</td><td><span class="badge badge-red">18%</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ── SENTIMENT ── -->
-  <div id="module-sentiment" class="module-page">
-    <div class="page-header">
-      <h1>Sentiment</h1>
-      <p>Hoe worden jouw brands omschreven in LLM-antwoorden?</p>
-    </div>
-
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-label">Positief</div>
-        <div class="stat-value" style="color:#15803d">73%</div>
-        <div class="stat-delta delta-up">↑ 6% vs vorige maand</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Neutraal</div>
-        <div class="stat-value" style="color:#d97706">19%</div>
-        <div class="stat-delta" style="color:#64748b">Stabiel</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Negatief</div>
-        <div class="stat-value" style="color:#dc2626">8%</div>
-        <div class="stat-delta delta-up">↓ 3% verbeterd</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Sentiment score</div>
-        <div class="stat-value">8.2</div>
-        <div class="stat-delta delta-up">↑ 0.4</div>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div class="card">
-        <div class="card-title">Veelgebruikte positieve termen</div>
-        <div class="card-sub">Woorden die LLMs gebruiken bij jouw brand</div>
-        <div style="margin-top:12px">
-          <span class="keyword-chip" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">professioneel <span class="chip-count" style="background:#dcfce7;color:#15803d">34×</span></span>
-          <span class="keyword-chip" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">betrouwbaar <span class="chip-count" style="background:#dcfce7;color:#15803d">28×</span></span>
-          <span class="keyword-chip" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">ervaren <span class="chip-count" style="background:#dcfce7;color:#15803d">22×</span></span>
-          <span class="keyword-chip" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">gerenommeerd <span class="chip-count" style="background:#dcfce7;color:#15803d">17×</span></span>
-          <span class="keyword-chip" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">aanbevolen <span class="chip-count" style="background:#dcfce7;color:#15803d">14×</span></span>
-          <span class="keyword-chip" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">specialist <span class="chip-count" style="background:#dcfce7;color:#15803d">11×</span></span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Sentiment per LLM</div>
-        <div class="card-sub">Hoe positief beschrijft elke AI jouw brand?</div>
-        <div style="margin-top:16px">
-          <div class="prog-row">
-            <div class="prog-label"><span>Claude</span><span>81%</span></div>
-            <div class="prog-track"><div class="prog-fill" style="width:81%"></div></div>
+          <div class="avatar-menu-item" data-avatar-action="dashboard">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            Dashboard
           </div>
-          <div class="prog-row">
-            <div class="prog-label"><span>ChatGPT</span><span>74%</span></div>
-            <div class="prog-track"><div class="prog-fill" style="width:74%;background:linear-gradient(90deg,#22c55e,#16a34a)"></div></div>
-          </div>
-          <div class="prog-row">
-            <div class="prog-label"><span>Gemini</span><span>64%</span></div>
-            <div class="prog-track"><div class="prog-fill" style="width:64%;background:linear-gradient(90deg,#f59e0b,#d97706)"></div></div>
+          <div class="avatar-menu-divider"></div>
+          <div class="avatar-menu-item danger">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Uitloggen
           </div>
         </div>
       </div>
     </div>
+  </header>
 
-    <div class="card">
-      <div class="card-title">Recente citaten</div>
-      <div class="card-sub">Hoe LLMs jouw brand beschrijven in antwoorden</div>
-      <div style="margin-top:16px">
-        <div class="alert-item">
-          <div class="alert-dot alert-dot-green"></div>
-          <div>
-            <div class="alert-title">"Skinlab staat bekend als een van de meest professionele klinieken in Amsterdam voor botoxbehandelingen."</div>
-            <div class="alert-meta">Claude · botox amsterdam · 2 dagen geleden</div>
-          </div>
-        </div>
-        <div class="alert-item">
-          <div class="alert-dot alert-dot-green"></div>
-          <div>
-            <div class="alert-title">"For botox in Amsterdam, Skinlab is frequently recommended for its experienced staff and natural results."</div>
-            <div class="alert-meta">ChatGPT · best botox Amsterdam · 3 dagen geleden</div>
-          </div>
-        </div>
-        <div class="alert-item">
-          <div class="alert-dot alert-dot-yellow"></div>
-          <div>
-            <div class="alert-title">"Er zijn meerdere goede opties in Amsterdam, waaronder Skinlab, al zijn er ook andere klinieken met vergelijkbare reputatie."</div>
-            <div class="alert-meta">Gemini · botox kliniek amsterdam · 5 dagen geleden</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Main content (filled by JS) -->
+  <main class="main" id="main-content"></main>
 
-  <!-- ── ALERTS ── -->
-  <div id="module-alerts" class="module-page">
-    <div class="page-header">
-      <h1>Alerts</h1>
-      <p>Meldingen wanneer je mention rate verandert of drempels overschrijdt</p>
-    </div>
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
 
-    <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <div>
-          <div class="card-title">Actieve meldingen</div>
-          <div class="card-sub" style="margin-bottom:0">3 alerts vereisen je aandacht</div>
-        </div>
-        <button class="btn-ghost">+ Nieuwe alert</button>
-      </div>
+</div><!-- /.app-right -->
 
-      <div class="alert-item">
-        <div class="alert-dot alert-dot-red"></div>
-        <div style="flex:1">
-          <div class="alert-title">beautyXL mention rate gedaald onder 25%</div>
-          <div class="alert-meta">Gemini · Vandaag 09:14 · Drempel: 30%</div>
-        </div>
-        <span class="badge badge-red">Kritiek</span>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot alert-dot-yellow"></div>
-        <div style="flex:1">
-          <div class="alert-title">Skinlab niet vermeld voor "cosmetische kliniek Amsterdam"</div>
-          <div class="alert-meta">ChatGPT · Gisteren 16:43</div>
-        </div>
-        <span class="badge badge-yellow">Let op</span>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot alert-dot-yellow"></div>
-        <div style="flex:1">
-          <div class="alert-title">Concurrent Kliniek XYZ overstijgt jouw score op Gemini</div>
-          <div class="alert-meta">Gemini · 2 dagen geleden</div>
-        </div>
-        <span class="badge badge-yellow">Let op</span>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot alert-dot-green"></div>
-        <div style="flex:1">
-          <div class="alert-title">Skinlab mention rate boven 75% op Claude</div>
-          <div class="alert-meta">Claude · 3 dagen geleden</div>
-        </div>
-        <span class="badge badge-green">Goed</span>
-      </div>
-    </div>
+<!-- Scripts -->
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/modules/brand-tracker.js"></script>
+<script src="js/modules/analytics.js"></script>
+<script src="js/modules/competitors.js"></script>
+<script src="js/modules/keywords.js"></script>
+<script src="js/modules/sentiment.js"></script>
+<script src="js/modules/alerts.js"></script>
+<script src="js/modules/reports.js"></script>
+<script src="js/modules/settings.js"></script>
+<script>App.init();</script>
 
-    <div class="card">
-      <div class="card-title">Alert regels</div>
-      <div class="card-sub">Stel drempels in voor automatische meldingen</div>
-      <div style="margin-top:16px">
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Mention rate daalt onder drempel</div>
-            <div class="toggle-sub">Melding bij &lt;30% voor elk brand</div>
-          </div>
-          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Concurrent overtreft jouw score</div>
-            <div class="toggle-sub">Vergelijk met gevolgde concurrenten</div>
-          </div>
-          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Nieuw keyword mist mention</div>
-            <div class="toggle-sub">Waarschuw bij 0% op een nieuw zoekwoord</div>
-          </div>
-          <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Wekelijkse samenvattingse-mail</div>
-            <div class="toggle-sub">Elke maandag om 08:00</div>
-          </div>
-          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── REPORTS ── -->
-  <div id="module-reports" class="module-page">
-    <div class="page-header">
-      <h1>Reports</h1>
-      <p>Download en plan rapporten over brand mentions</p>
-    </div>
-
-    <div class="grid2">
-      <div class="card" style="border:2px solid #6366f1">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <div class="card-title">Maandrapport maart 2026</div>
-            <div class="card-sub">Volledig overzicht · 3 brands · 24 runs</div>
-          </div>
-          <span class="badge badge-blue">Nieuw</span>
-        </div>
-        <div style="margin:14px 0;padding:12px;background:#f8fafc;border-radius:10px;font-size:13px;color:#475569">
-          Periode: 1–24 mrt 2026 · Gem. score: 62% · Beste brand: Skinlab (78%)
-        </div>
-        <button class="btn" style="width:100%">↓ Download PDF</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Maandrapport feb 2026</div>
-        <div class="card-sub">Volledig overzicht · 3 brands · 19 runs</div>
-        <div style="margin:14px 0;padding:12px;background:#f8fafc;border-radius:10px;font-size:13px;color:#475569">
-          Periode: 1–28 feb 2026 · Gem. score: 57% · Beste brand: Skinlab (71%)
-        </div>
-        <button class="btn-ghost" style="width:100%">↓ Download PDF</button>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-title">Gepland rapport</div>
-      <div class="card-sub">Automatisch gegenereerd aan het einde van elke maand</div>
-      <div style="margin-top:16px">
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Maandelijks rapport</div>
-            <div class="toggle-sub">Elke 1e van de maand automatisch aanmaken</div>
-          </div>
-          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Wekelijks snapshot</div>
-            <div class="toggle-sub">Elke vrijdag een beknopt overzicht</div>
-          </div>
-          <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Inclusief concurrentieanalyse</div>
-            <div class="toggle-sub">Voeg competitor benchmarks toe aan rapporten</div>
-          </div>
-          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-        </div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table class="data-table">
-        <thead><tr><th>Rapport</th><th>Periode</th><th>Brands</th><th>Runs</th><th>Gem. score</th><th></th></tr></thead>
-        <tbody>
-          <tr><td><strong>Maart 2026</strong></td><td>1–24 mrt</td><td>3</td><td>24</td><td><span class="badge badge-green">62%</span></td><td><a style="color:#6366f1;font-size:13px;font-weight:600;cursor:pointer">Download</a></td></tr>
-          <tr><td><strong>Februari 2026</strong></td><td>1–28 feb</td><td>3</td><td>19</td><td><span class="badge badge-blue">57%</span></td><td><a style="color:#6366f1;font-size:13px;font-weight:600;cursor:pointer">Download</a></td></tr>
-          <tr><td><strong>Januari 2026</strong></td><td>1–31 jan</td><td>2</td><td>16</td><td><span class="badge badge-gray">51%</span></td><td><a style="color:#6366f1;font-size:13px;font-weight:600;cursor:pointer">Download</a></td></tr>
-          <tr><td><strong>December 2025</strong></td><td>1–31 dec</td><td>2</td><td>12</td><td><span class="badge badge-gray">48%</span></td><td><a style="color:#6366f1;font-size:13px;font-weight:600;cursor:pointer">Download</a></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ── SETTINGS ── -->
-  <div id="module-settings" class="module-page">
-    <div class="page-header">
-      <h1>Settings</h1>
-      <p>Beheer API keys en voorkeuren</p>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <p class="settings-description">Voeg je API keys toe om ChatGPT en Gemini te activeren. Keys worden lokaal opgeslagen in je browser.</p>
-      <p class="settings-section-label">API Keys</p>
-      <div class="field">
-        <label>OpenAI API Key (ChatGPT)</label>
-        <input type="password" id="openaiKey" placeholder="sk-..." oninput="saveSettings()">
-      </div>
-      <div class="field">
-        <label>Google Gemini API Key</label>
-        <input type="password" id="geminiKey" placeholder="AIza..." oninput="saveSettings()">
-      </div>
-      <p class="hint">OpenAI key via platform.openai.com · Gemini key via aistudio.google.com</p>
-    </div>
-
-    <div class="card">
-      <p class="settings-section-label">Voorkeuren</p>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Automatisch herhalen</div>
-          <div class="toggle-sub">Voer elke week automatisch dezelfde test uit</div>
-        </div>
-        <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Resultaten e-mailen</div>
-          <div class="toggle-sub">Stuur resultaten naar je e-mailadres</div>
-        </div>
-        <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Web search inschakelen (Claude)</div>
-          <div class="toggle-sub">Geeft realtimeresultaten maar gebruikt meer tokens</div>
-        </div>
-        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-      </div>
-    </div>
-  </div>
-
-</main>
-
-<script>
-const SETTINGS_KEY = "llm_tracker_settings";
-const HISTORY_KEY = "llm_tracker_history";
-
-let settings = { openaiKey: "", geminiKey: "" };
-let history = [];
-
-try { const s = localStorage.getItem(SETTINGS_KEY); if (s) settings = JSON.parse(s); } catch {}
-try { const h = localStorage.getItem(HISTORY_KEY); if (h) history = JSON.parse(h); } catch {}
-document.getElementById("openaiKey").value = settings.openaiKey || "";
-document.getElementById("geminiKey").value = settings.geminiKey || "";
-updateKeyWarning();
-renderHistory();
-
-// ── Module navigation ──
-function switchModule(name) {
-  document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
-  document.querySelectorAll(".module-page").forEach(el => el.classList.remove("active"));
-  document.getElementById("module-" + name).classList.add("active");
-  // find and activate the matching nav item
-  document.querySelectorAll(".nav-item").forEach(el => {
-    if (el.getAttribute("onclick") === `switchModule('${name}')`) el.classList.add("active");
-  });
-}
-
-// ── Tab navigation (brand tracker) ──
-function switchTab(name) {
-  document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", ["run","history"][i] === name));
-  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  document.getElementById("panel-" + name).classList.add("active");
-  if (name === "history") renderHistory();
-}
-
-function saveSettings() {
-  settings.openaiKey = document.getElementById("openaiKey").value.trim();
-  settings.geminiKey = document.getElementById("geminiKey").value.trim();
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  updateKeyWarning();
-}
-
-function updateKeyWarning() {
-  document.getElementById("noKeyWarning").style.display = (settings.openaiKey || settings.geminiKey) ? "none" : "flex";
-}
-
-function getBrands() {
-  return document.getElementById("brands").value.split(",").map(b => b.trim()).filter(Boolean);
-}
-
-function updateTags() {
-  const brands = getBrands();
-  document.getElementById("tags").innerHTML = brands.map(b => `<span class="tag">${b}</span>`).join("");
-}
-
-function toggleCustom() {
-  const on = document.getElementById("useCustom").checked;
-  document.getElementById("customPrompt").style.display = on ? "block" : "none";
-  document.getElementById("promptPreview").style.display = on ? "none" : (getPrompts().length ? "block" : "none");
-}
-
-function getPrompts() {
-  const t = document.getElementById("treatment").value.trim();
-  const c = document.getElementById("city").value.trim();
-  if (!t || !c) return [];
-  return [
-    `${t} ${c}`, `beste ${t} ${c}`, `${t} kliniek ${c}`, `goede ${t} ${c}`,
-    `${t} behandeling ${c}`, `best ${t} ${c}`, `${t} clinic ${c}`,
-    `Wat is de beste plek voor ${t} in ${c}?`, `Waar kan ik ${t} laten doen in ${c}?`,
-    `Kun je een kliniek aanbevelen voor ${t} in ${c}?`, `Where should I go for ${t} in ${c}?`,
-    `Best place for ${t} in ${c}?`, `Ik wil ${t} laten doen in ${c}, waar moet ik zijn?`,
-    `Welke salon in ${c} is het beste voor ${t}?`,
-  ];
-}
-
-function updatePrompts() {
-  if (document.getElementById("useCustom").checked) return;
-  const prompts = getPrompts();
-  const preview = document.getElementById("promptPreview");
-  if (!prompts.length) { preview.style.display = "none"; return; }
-  preview.style.display = "block";
-  document.getElementById("promptCount").textContent = `TE TESTEN PROMPTS (${prompts.length})`;
-  document.getElementById("promptList").innerHTML = prompts.map(p => `<li>${p}</li>`).join("");
-}
-
-function showError(msg) {
-  const el = document.getElementById("error");
-  document.getElementById("errorMsg").textContent = msg;
-  el.style.display = msg ? "flex" : "none";
-}
-
-async function queryAnthropic(prompt) {
-  const res = await fetch("https://llm-proxy.morten-ff3.workers.dev/", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514", max_tokens: 2000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content.filter(b => b.type === "text").map(b => b.text).join("\n");
-}
-
-async function queryOpenAI(prompt) {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${settings.openaiKey}` },
-    body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.choices?.[0]?.message?.content || "";
-}
-
-async function queryGemini(prompt) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${settings.geminiKey}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-  );
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-}
-
-function checkMentions(text, brands) {
-  if (!text) return [];
-  return brands.filter(b => text.toLowerCase().includes(b.toLowerCase()));
-}
-
-function highlightBrands(text, brands) {
-  text = cleanMarkdown(text);
-  if (!brands.length || !text) return escapeHtml(text);
-  const escaped = brands.map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  return escapeHtml(text).replace(new RegExp(`(${escaped.map(b => escapeHtml(b)).join("|")})`, "gi"), "<mark>$1</mark>");
-}
-
-function cleanMarkdown(str) {
-  if (!str) return str;
-  return str
-    .replace(/#{1,6} /g, '')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/^\s*[-*+]\s+/gm, '• ')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .trim();
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-
-async function runTest() {
-  const brands = getBrands();
-  const treatment = document.getElementById("treatment").value.trim();
-  const city = document.getElementById("city").value.trim();
-  const useCustom = document.getElementById("useCustom").checked;
-  const customPrompt = document.getElementById("customPrompt").value.trim();
-
-  if (!brands.length) { showError("Voer minimaal één brand in."); return; }
-  if (!treatment || !city) { showError("Voer behandeling en stad in."); return; }
-  showError("");
-
-  const prompts = useCustom && customPrompt ? [customPrompt] : getPrompts();
-  const btn = document.getElementById("runBtn");
-  btn.disabled = true;
-  btn.textContent = "Bezig met testen...";
-  document.getElementById("results").style.display = "none";
-
-  const llms = [
-    { name: "Claude", fn: queryAnthropic, enabled: true },
-    { name: "ChatGPT", fn: queryOpenAI, enabled: !!settings.openaiKey },
-    { name: "Gemini", fn: queryGemini, enabled: !!settings.geminiKey },
-  ];
-
-  const runResults = [];
-  for (let pi = 0; pi < prompts.length; pi++) {
-    if (pi > 0) await new Promise(r => setTimeout(r, 4000));
-    const prompt = prompts[pi];
-    const promptResults = { prompt, responses: [] };
-    for (const llm of llms) {
-      if (!llm.enabled) { promptResults.responses.push({ llm: llm.name, text: null, mentionedBrands: [], skipped: true }); continue; }
-      try {
-        const text = await llm.fn(prompt);
-        promptResults.responses.push({ llm: llm.name, text, mentionedBrands: checkMentions(text, brands), skipped: false });
-      } catch(e) {
-        promptResults.responses.push({ llm: llm.name, text: `Error: ${e.message}`, mentionedBrands: [], skipped: false, error: true });
-      }
-    }
-    runResults.push(promptResults);
-  }
-
-  const summary = {};
-  for (const brand of brands) {
-    summary[brand] = { Claude: 0, ChatGPT: 0, Gemini: 0 };
-    for (const r of runResults)
-      for (const resp of r.responses)
-        if (resp.mentionedBrands.includes(brand)) summary[brand][resp.llm]++;
-  }
-
-  const entry = { id: Date.now(), date: new Date().toLocaleDateString("nl-NL"), brands, treatment, city, results: runResults, summary, total: prompts.length };
-  history = [entry, ...history].slice(0, 20);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-
-  renderResults(entry, brands);
-  btn.disabled = false;
-  btn.textContent = "▶ Test uitvoeren";
-}
-
-function renderResults(entry, brands) {
-  const el = document.getElementById("results");
-  let html = `<p class="section-title">Resultaten per brand</p>
-  <table class="summary-table"><thead><tr><th>Brand</th><th>Claude</th><th>ChatGPT</th><th>Gemini</th></tr></thead><tbody>`;
-  for (const brand of brands) {
-    html += `<tr><td>${escapeHtml(brand)}</td>`;
-    for (const llm of ["Claude","ChatGPT","Gemini"]) {
-      const count = entry.summary[brand]?.[llm] || 0;
-      html += `<td class="${count > 0 ? "green" : "red"}">${count}/${entry.total}</td>`;
-    }
-    html += `</tr>`;
-  }
-  html += `</tbody></table><p class="section-title">Details per prompt</p>`;
-  for (const r of entry.results) {
-    html += `<div class="prompt-block"><div class="prompt-header">"${escapeHtml(r.prompt)}"</div>`;
-    for (const resp of r.responses) {
-      let badge = "";
-      if (resp.skipped) badge = `<span class="badge badge-gray">Geen API key</span>`;
-      else if (resp.error) badge = `<span class="badge badge-red">Error</span>`;
-      else if (resp.mentionedBrands.length > 0) badge = `<span class="badge badge-green">✓ ${escapeHtml(resp.mentionedBrands.join(", "))}</span>`;
-      else badge = `<span class="badge badge-red">✗ Niet vermeld</span>`;
-      html += `<div class="llm-response"><div class="llm-row"><span class="llm-name">${resp.llm}</span>${badge}</div>`;
-      if (resp.text && !resp.skipped) html += `<p class="response-text">${highlightBrands(resp.text, brands)}</p>`;
-      html += `</div>`;
-    }
-    html += `</div>`;
-  }
-  el.innerHTML = html;
-  el.style.display = "block";
-}
-
-function renderHistory() {
-  const el = document.getElementById("historyContent");
-  if (!history.length) { el.innerHTML = `<p style="color:#94a3b8;font-size:14px">Nog geen testgeschiedenis.</p>`; return; }
-  let html = "";
-  for (const entry of history) {
-    const brands = entry.brands || [];
-    const summary = entry.summary || {};
-    html += `<div class="history-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-        <div>
-          <div class="tags">${brands.map(b => `<span class="tag">${escapeHtml(b)}</span>`).join("")}</div>
-          <p class="history-meta">${escapeHtml(entry.treatment)} · ${escapeHtml(entry.city)} · ${entry.date}</p>
-        </div>
-        <span style="font-size:12px;color:#94a3b8">${entry.total} prompts</span>
-      </div>
-      <table class="history-table"><thead><tr><th>Brand</th><th>Claude</th><th>ChatGPT</th><th>Gemini</th></tr></thead><tbody>`;
-    for (const brand of brands) {
-      html += `<tr><td>${escapeHtml(brand)}</td>`;
-      for (const llm of ["Claude","ChatGPT","Gemini"]) {
-        const count = summary[brand]?.[llm] || 0;
-        html += `<td class="${count > 0 ? "green" : "red"}">${count}/${entry.total}</td>`;
-      }
-      html += `</tr>`;
-    }
-    html += `</tbody></table></div>`;
-  }
-  html += `<button class="btn-danger" onclick="clearHistory()">Geschiedenis wissen</button>`;
-  el.innerHTML = html;
-}
-
-function clearHistory() {
-  history = [];
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  renderHistory();
-}
-</script>
 </body>
 </html>
