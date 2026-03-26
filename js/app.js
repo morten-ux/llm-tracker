@@ -47,6 +47,9 @@ var App = (function() {
     if (titleEl) titleEl.textContent = _modules[id].label;
     var content = document.getElementById('main-content');
     if (content) {
+      content.style.animation = 'none';
+      content.offsetHeight; // force reflow so animation re-triggers
+      content.style.animation = '';
       content.innerHTML = _modules[id].render();
       if (_modules[id].init) _modules[id].init();
     }
