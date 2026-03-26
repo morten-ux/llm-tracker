@@ -188,7 +188,7 @@ var App = (function() {
     }
     if (overlay) overlay.addEventListener('click', closeSidebar);
     initTopbar();
-    navigate('brand-tracker');
+    navigate('dashboard');
     var alerts = JSON.parse(localStorage.getItem('llm_tracker_alerts') || '[]');
     updateNotificationBadge(alerts.filter(function(a) { return !a.dismissed; }).length);
   }
