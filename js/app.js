@@ -54,6 +54,7 @@ var App = (function() {
       if (_modules[id].init) _modules[id].init();
     }
     closeDropdowns();
+    closeSidebar();
   }
 
   function toast(msg, type) {
@@ -77,6 +78,29 @@ var App = (function() {
       if (count > 0) { sidebarBadge.textContent = count; sidebarBadge.style.display = ''; }
       else sidebarBadge.style.display = 'none';
     }
+  }
+
+  function updateProfile(name, email) {
+    var letter = (name || '').trim().charAt(0).toUpperCase() || 'U';
+    var avatarEl = document.getElementById('topbar-avatar');
+    if (avatarEl) avatarEl.textContent = letter;
+    var dropdownNameEl = document.querySelector('.avatar-name');
+    if (dropdownNameEl) dropdownNameEl.textContent = name || '';
+    var dropdownEmailEl = document.querySelector('.avatar-email');
+    if (dropdownEmailEl) dropdownEmailEl.textContent = email || '';
+    var settingsAvatarEl = document.getElementById('settings-profile-avatar');
+    if (settingsAvatarEl) settingsAvatarEl.textContent = letter;
+    var settingsNameEl = document.getElementById('settings-profile-name');
+    if (settingsNameEl) settingsNameEl.textContent = name || '';
+    var settingsEmailEl = document.getElementById('settings-profile-email');
+    if (settingsEmailEl) settingsEmailEl.textContent = email || '';
+  }
+
+  function closeSidebar() {
+    var sidebar = document.querySelector('.sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
   }
 
   function closeDropdowns() {
@@ -149,11 +173,25 @@ var App = (function() {
     // Apply persisted dark mode before first render
     var s = ApiService.getSettings();
     if (s.darkMode) document.documentElement.classList.add('dark');
+    // Apply persisted profile
+    if (s.name) updateProfile(s.name, s.email);
+    // Mobile sidebar toggle
+    var sidebarToggle = document.getElementById('sidebar-toggle');
+    var sidebar = document.querySelector('.sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    if (sidebarToggle && sidebar) {
+      sidebarToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sidebar.classList.toggle('open');
+        if (overlay) overlay.classList.toggle('open');
+      });
+    }
+    if (overlay) overlay.addEventListener('click', closeSidebar);
     initTopbar();
     navigate('brand-tracker');
     var alerts = JSON.parse(localStorage.getItem('llm_tracker_alerts') || '[]');
     updateNotificationBadge(alerts.filter(function(a) { return !a.dismissed; }).length);
   }
 
-  return { registerModule: registerModule, navigate: navigate, toast: toast, updateNotificationBadge: updateNotificationBadge, icon: icon, init: init };
+  return { registerModule: registerModule, navigate: navigate, toast: toast, updateNotificationBadge: updateNotificationBadge, updateProfile: updateProfile, icon: icon, init: init };
 })();

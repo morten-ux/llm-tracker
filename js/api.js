@@ -2,7 +2,7 @@ var ApiService = (function() {
   var SETTINGS_KEY = 'llm_tracker_settings';
   var HISTORY_KEY = 'llm_tracker_history';
 
-  var DEFAULTS = { openaiKey: '', geminiKey: '', webSearch: true, alertThreshold: 30, autoRepeat: false, emailResults: false, darkMode: false, notifCritical: true, notifWeekly: true, notifBenchmark: false, modelId: 'claude-sonnet-4-20250514', myBrand: '' };
+  var DEFAULTS = { openaiKey: '', geminiKey: '', webSearch: true, alertThreshold: 30, autoRepeat: false, emailResults: false, darkMode: false, notifCritical: true, notifWeekly: true, notifBenchmark: false, modelId: 'claude-sonnet-4-20250514', myBrand: '', name: '', email: '' };
 
   function getSettings() {
     try {

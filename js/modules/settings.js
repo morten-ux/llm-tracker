@@ -14,19 +14,19 @@ App.registerModule('settings', {
   <div class="card">
     <div class="card-title" style="margin-bottom:18px;">Profiel</div>
     <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px;">
-      <div style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:700; flex-shrink:0;">M</div>
+      <div style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:700; flex-shrink:0;" id="settings-profile-avatar">?</div>
       <div>
-        <div style="font-size:15px; font-weight:700;">Morten Muijsers</div>
-        <div style="font-size:13px; color:var(--text-3);">morten@example.com</div>
+        <div style="font-size:15px; font-weight:700;" id="settings-profile-name"></div>
+        <div style="font-size:13px; color:var(--text-3);" id="settings-profile-email"></div>
       </div>
     </div>
     <div class="field">
       <label for="s-name">Naam</label>
-      <input type="text" id="s-name" value="Morten Muijsers" />
+      <input type="text" id="s-name" placeholder="Jouw naam" />
     </div>
     <div class="field">
       <label for="s-email">E-mailadres</label>
-      <input type="email" id="s-email" value="morten@example.com" />
+      <input type="email" id="s-email" placeholder="jouw@email.nl" />
     </div>
     <div class="field">
       <label for="s-mybrand">Mijn brand naam <span class="label-hint">(gebruikt in Competitors)</span></label>
@@ -224,6 +224,19 @@ App.registerModule('settings', {
         settings.myBrand = myBrandEl.value.trim();
         ApiService.saveSettings(settings);
       });
+      myBrandEl.addEventListener('blur', function() {
+        var brandName = myBrandEl.value.trim();
+        if (!brandName) return;
+        var COMP_KEY = 'llm_tracker_competitors';
+        var comps = [];
+        try { comps = JSON.parse(localStorage.getItem(COMP_KEY) || '[]'); } catch(e) {}
+        var exists = comps.some(function(c) { return c.name.toLowerCase() === brandName.toLowerCase(); });
+        if (!exists) {
+          comps.push({ id: Date.now(), name: brandName, website: '' });
+          localStorage.setItem(COMP_KEY, JSON.stringify(comps));
+          App.toast('\'' + brandName + '\' toegevoegd aan Competitors', 'success');
+        }
+      });
     }
 
     // Claude model
@@ -238,10 +251,22 @@ App.registerModule('settings', {
       });
     }
 
+    // Load name/email into fields and profile display
+    var nameEl = document.getElementById('s-name');
+    var emailEl = document.getElementById('s-email');
+    if (nameEl) nameEl.value = s.name || '';
+    if (emailEl) emailEl.value = s.email || '';
+    App.updateProfile(s.name || '', s.email || '');
+
     // Profile save
     var profileSave = document.getElementById('s-profile-save');
     if (profileSave) {
       profileSave.addEventListener('click', function() {
+        var settings = ApiService.getSettings();
+        settings.name = nameEl ? nameEl.value.trim() : settings.name;
+        settings.email = emailEl ? emailEl.value.trim() : settings.email;
+        ApiService.saveSettings(settings);
+        App.updateProfile(settings.name, settings.email);
         App.toast('Profiel opgeslagen', 'success');
       });
     }
