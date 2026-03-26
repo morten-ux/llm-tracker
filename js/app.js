@@ -134,6 +134,9 @@ var App = (function() {
   }
 
   function init() {
+    // Apply persisted dark mode before first render
+    var s = ApiService.getSettings();
+    if (s.darkMode) document.documentElement.classList.add('dark');
     initTopbar();
     navigate('brand-tracker');
     var alerts = JSON.parse(localStorage.getItem('llm_tracker_alerts') || '[]');

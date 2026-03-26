@@ -2,7 +2,7 @@ var ApiService = (function() {
   var SETTINGS_KEY = 'llm_tracker_settings';
   var HISTORY_KEY = 'llm_tracker_history';
 
-  var DEFAULTS = { openaiKey: '', geminiKey: '', webSearch: true, alertThreshold: 30, autoRepeat: false, emailResults: false, darkMode: false, notifCritical: true, notifWeekly: true, notifBenchmark: false };
+  var DEFAULTS = { openaiKey: '', geminiKey: '', webSearch: true, alertThreshold: 30, autoRepeat: false, emailResults: false, darkMode: false, notifCritical: true, notifWeekly: true, notifBenchmark: false, modelId: 'claude-sonnet-4-20250514', myBrand: '' };
 
   function getSettings() {
     try {
@@ -47,7 +47,7 @@ var ApiService = (function() {
 
   async function queryAnthropic(prompt) {
     var s = getSettings();
-    var body = { model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] };
+    var body = { model: s.modelId || 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] };
     if (s.webSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
     var res = await fetch('https://llm-proxy.morten-ff3.workers.dev/', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

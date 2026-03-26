@@ -28,6 +28,10 @@ App.registerModule('settings', {
       <label for="s-email">E-mailadres</label>
       <input type="email" id="s-email" value="morten@example.com" />
     </div>
+    <div class="field">
+      <label for="s-mybrand">Mijn brand naam <span class="label-hint">(gebruikt in Competitors)</span></label>
+      <input type="text" id="s-mybrand" placeholder="bijv. Skinlab" />
+    </div>
     <button class="btn" id="s-profile-save">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 20 4 15"/></svg>
       Opslaan
@@ -44,6 +48,14 @@ App.registerModule('settings', {
     <div class="field">
       <label for="s-gemini">Google Gemini API Key</label>
       <input type="password" id="s-gemini" placeholder="AIza..." autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="s-model">Claude model</label>
+      <select id="s-model">
+        <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (aanbevolen)</option>
+        <option value="claude-opus-4-5">Claude Opus 4.5 (hoogste kwaliteit)</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (snelst)</option>
+      </select>
     </div>
     <p class="hint">Je API keys worden lokaal opgeslagen in je browser en nooit gedeeld. Claude wordt altijd getest via onze eigen proxy (geen key vereist).</p>
   </div>
@@ -200,6 +212,29 @@ App.registerModule('settings', {
         settings.alertThreshold = parseInt(thresholdEl.value) || 30;
         ApiService.saveSettings(settings);
         App.toast('Drempelwaarde opgeslagen', 'success');
+      });
+    }
+
+    // My brand
+    var myBrandEl = document.getElementById('s-mybrand');
+    if (myBrandEl) {
+      myBrandEl.value = s.myBrand || '';
+      myBrandEl.addEventListener('input', function() {
+        var settings = ApiService.getSettings();
+        settings.myBrand = myBrandEl.value.trim();
+        ApiService.saveSettings(settings);
+      });
+    }
+
+    // Claude model
+    var modelEl = document.getElementById('s-model');
+    if (modelEl) {
+      modelEl.value = s.modelId || 'claude-sonnet-4-20250514';
+      modelEl.addEventListener('change', function() {
+        var settings = ApiService.getSettings();
+        settings.modelId = modelEl.value;
+        ApiService.saveSettings(settings);
+        App.toast('Model opgeslagen', 'success');
       });
     }
 

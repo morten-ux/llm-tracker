@@ -94,8 +94,8 @@ window.CompetitorsModule = {
     var stored = localStorage.getItem(this.STORAGE_KEY);
     if (stored) try { return JSON.parse(stored); } catch(e) {}
     var defaults = [
-      { id: 1, name: 'Kliniek XYZ', website: '', isMe: false },
-      { id: 2, name: 'Skinlab', website: '', isMe: true },
+      { id: 1, name: 'Kliniek XYZ', website: '' },
+      { id: 2, name: 'Skinlab', website: '' },
     ];
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(defaults));
     return defaults;
@@ -136,12 +136,13 @@ window.CompetitorsModule = {
     if (!tbody) return;
 
     var comps = this._getCompetitors();
+    var myBrand = (ApiService.getSettings().myBrand || '').toLowerCase();
     var history = ApiService.getHistory();
     var llms = [];
     history.forEach(function(e) { Object.keys(e.results || {}).forEach(function(llm) { if (!llms.includes(llm)) llms.push(llm); }); });
 
     var rows = comps.map(function(c) {
-      return { comp: c, scores: CompetitorsModule._computeScores(c.name) };
+      return { comp: c, scores: CompetitorsModule._computeScores(c.name), isMe: myBrand && c.name.toLowerCase() === myBrand };
     }).sort(function(a, b) {
       if (a.scores.avg === null && b.scores.avg === null) return 0;
       if (a.scores.avg === null) return 1;
@@ -158,11 +159,12 @@ window.CompetitorsModule = {
     tbody.innerHTML = rows.map(function(row, i) {
       var c = row.comp;
       var s = row.scores;
+      var isMe = row.isMe;
       var avg = s.avg !== null ? s.avg + '%' : '—';
       var avgCls = s.avg !== null ? (s.avg >= 75 ? 'green' : s.avg < 30 ? 'red' : '') : '';
-      return '<tr' + (c.isMe ? ' style="background:var(--primary-light);"' : '') + '>'
+      return '<tr' + (isMe ? ' style="background:var(--primary-light);"' : '') + '>'
         + '<td style="text-align:center;"><strong>#' + (i + 1) + '</strong></td>'
-        + '<td><strong>' + ApiService.escapeHtml(c.name) + '</strong>' + (c.isMe ? ' <span class="badge badge-green">Jij</span>' : '') + '</td>'
+        + '<td><strong>' + ApiService.escapeHtml(c.name) + '</strong>' + (isMe ? ' <span class="badge badge-green">Jij</span>' : '') + '</td>'
         + llms.map(function(llm) {
           var r = s.perLLM[llm];
           if (r === undefined) return '<td style="text-align:center;">—</td>';
@@ -170,13 +172,13 @@ window.CompetitorsModule = {
         }).join('')
         + '<td style="text-align:center;" class="' + avgCls + '"><strong>' + avg + '</strong></td>'
         + '<td style="text-align:center;"><button class="btn-ghost btn-sm"'
-        + (c.isMe ? ' disabled' : ' onclick="CompetitorsModule.deleteCompetitor(' + c.id + ')"') + '>Verwijderen</button></td>'
+        + (isMe ? ' disabled' : ' onclick="CompetitorsModule.deleteCompetitor(' + c.id + ')"') + '>Verwijderen</button></td>'
         + '</tr>';
     }).join('') || '<tr><td colspan="' + (llms.length + 4) + '" style="text-align:center; color:var(--text-3); padding:20px;">Geen concurrenten. Voeg er een toe.</td></tr>';
 
     // Stats
     document.getElementById('comp-count').textContent = comps.length;
-    var meIdx = rows.findIndex(function(r) { return r.comp.isMe; });
+    var meIdx = rows.findIndex(function(r) { return r.isMe; });
     document.getElementById('comp-rank').textContent = meIdx >= 0 ? '#' + (meIdx + 1) : '—';
     var top = rows[0];
     document.getElementById('comp-top').textContent = top ? top.comp.name : '—';
