@@ -80,6 +80,12 @@ App.registerModule('brand-tracker', {
 </div>
 
 <div class="tab-panel" id="tab-history">
+  <div class="history-search-wrap">
+    <span class="history-search-icon">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </span>
+    <input type="text" id="bt-history-search" placeholder="Zoek op brand, behandeling of stad..." />
+  </div>
   <div id="bt-history"></div>
 </div>
 
@@ -200,6 +206,9 @@ App.registerModule('brand-tracker', {
     if (brandsInput) brandsInput.addEventListener('input', _saveForm);
     if (treatmentInput) treatmentInput.addEventListener('input', _saveForm);
     if (cityInput) cityInput.addEventListener('input', _saveForm);
+
+    var histSearch = document.getElementById('bt-history-search');
+    if (histSearch) histSearch.addEventListener('input', function() { BrandTracker.renderHistory(); });
 
     BrandTracker.updateKeyWarning();
     BrandTracker.renderHistory();
@@ -380,8 +389,13 @@ window.BrandTracker = {
   renderHistory: function() {
     var histDiv = document.getElementById('bt-history');
     if (!histDiv) return;
-    var history = ApiService.getHistory();
-    if (!history.length) {
+    var allHistory = ApiService.getHistory();
+    var searchEl = document.getElementById('bt-history-search');
+    var filter = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    var history = filter ? allHistory.filter(function(e) {
+      return ((e.brands || []).join(' ') + ' ' + (e.treatment || '') + ' ' + (e.city || '')).toLowerCase().includes(filter);
+    }) : allHistory;
+    if (!allHistory.length) {
       histDiv.innerHTML = '<div class="empty-state">'
         + '<div class="empty-state-icon">' + App.icon('clock', 36) + '</div>'
         + '<h3>Nog geen tests uitgevoerd</h3>'
@@ -395,8 +409,15 @@ window.BrandTracker = {
       });
       return;
     }
+    if (filter && !history.length) {
+      histDiv.innerHTML = '<div style="text-align:center; padding:32px 0; color:var(--text-3);">'
+        + App.icon('search', 28)
+        + '<p style="margin-top:10px;">Geen tests gevonden voor <strong>"' + ApiService.escapeHtml(filter) + '"</strong></p>'
+        + '</div>';
+      return;
+    }
     var html = '<div class="flex-between mb-16">'
-      + '<span class="section-title" style="margin-bottom:0;">' + history.length + ' opgeslagen tests</span>'
+      + '<span class="section-title" style="margin-bottom:0;">' + (filter ? history.length + ' van ' + allHistory.length : allHistory.length) + ' opgeslagen tests</span>'
       + '<button class="btn-ghost btn-sm" onclick="BrandTracker.clearHistory()">Alles wissen</button>'
       + '</div>';
     history.forEach(function(entry) {

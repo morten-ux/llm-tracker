@@ -119,21 +119,18 @@ window.KeywordsModule = {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(kws));
   },
 
-  // Compute mention rate for a keyword by matching entry.treatment to the keyword
+  // Compute how often a keyword appears in LLM responses across all history
   _computeRate: function(keyword) {
     var history = ApiService.getHistory();
+    var kw = keyword.toLowerCase();
     var llmMap = {};
     history.forEach(function(entry) {
-      if (!entry.treatment || entry.treatment.toLowerCase() !== keyword.toLowerCase()) return;
       Object.keys(entry.results || {}).forEach(function(llm) {
-        var brands = entry.brands || [];
         var responses = Object.values(entry.results[llm]);
         if (!llmMap[llm]) llmMap[llm] = { total: 0, hits: 0 };
         responses.forEach(function(r) {
           llmMap[llm].total++;
-          if (r && brands.some(function(b) { return r.toLowerCase().includes(b.toLowerCase()); })) {
-            llmMap[llm].hits++;
-          }
+          if (r && r.toLowerCase().includes(kw)) llmMap[llm].hits++;
         });
       });
     });

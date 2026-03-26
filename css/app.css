@@ -1037,6 +1037,11 @@ html.dark .dash-icon-blue { background: rgba(37,99,235,.2); color: #93c5fd; }
 html.dark .dash-icon-purple { background: rgba(124,58,237,.2); color: #c4b5fd; }
 html.dark .dash-icon-orange { background: rgba(234,88,12,.2); color: #fdba74; }
 
+/* ── History search ── */
+.history-search-wrap { position: relative; margin-bottom: 16px; }
+.history-search-wrap input { width: 100%; padding-left: 34px; }
+.history-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; display: flex; }
+
 /* ── History card expandable ── */
 .history-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; cursor: pointer; border-radius: 6px; margin: -6px; padding: 6px; transition: background .12s; }
 .history-card-header:hover { background: var(--bg); }

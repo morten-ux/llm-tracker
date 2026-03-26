@@ -9,6 +9,10 @@ App.registerModule('dashboard', {
     <p>Overzicht van jouw LLM brand performance</p>
   </div>
   <div class="page-header-actions">
+    <button class="btn-ghost" id="dash-rerun-btn" style="display:none;">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-5"/></svg>
+      Herhaal laatste
+    </button>
     <button class="btn" onclick="App.navigate('brand-tracker')">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       Nieuwe test
@@ -73,6 +77,17 @@ App.registerModule('dashboard', {
           + '<div><div class="dash-action-title">' + a.title + '</div><div class="dash-action-sub">' + a.sub + '</div></div>'
           + '</div>';
       }).join('');
+    }
+    var rerunBtn = document.getElementById('dash-rerun-btn');
+    if (rerunBtn) {
+      var lastEntry = ApiService.getHistory()[0];
+      if (lastEntry) {
+        rerunBtn.style.display = '';
+        rerunBtn.addEventListener('click', function() {
+          App.navigate('brand-tracker');
+          setTimeout(function() { if (window.BrandTracker) BrandTracker.rerunTest(lastEntry.id); }, 80);
+        });
+      }
     }
     DashboardModule.refresh();
   }
