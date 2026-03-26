@@ -99,7 +99,7 @@ var App = (function() {
       el.addEventListener('click', function() {
         var action = el.dataset.avatarAction;
         if (action === 'settings') navigate('settings');
-        if (action === 'dashboard') window.location.href = 'dashboard.html';
+        if (action === 'dashboard') navigate('dashboard');
         closeDropdowns();
       });
     });

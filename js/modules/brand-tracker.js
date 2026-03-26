@@ -9,10 +9,10 @@ App.registerModule('brand-tracker', {
     <p>Test of jouw brands worden vermeld in ChatGPT, Gemini en Claude</p>
   </div>
   <div class="page-header-actions">
-    <a href="dashboard.html" class="btn-ghost">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    <button class="btn-ghost" onclick="App.navigate('dashboard')">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Dashboard
-    </a>
+    </button>
   </div>
 </div>
 
@@ -402,26 +402,169 @@ window.BrandTracker = {
     history.forEach(function(entry) {
       var brands = entry.brands || [];
       var llmNames = Object.keys(entry.results || {});
+      // Compute avg mention rate for this entry
+      var hits = 0, total = 0;
+      llmNames.forEach(function(llm) {
+        Object.values(entry.results[llm] || {}).forEach(function(r) {
+          total++;
+          brands.forEach(function(b) {
+            if (r && r.toLowerCase().includes(b.toLowerCase())) hits++;
+          });
+        });
+      });
+      var rate = total ? Math.round(hits / total * 100) : null;
+      var rateCls = rate !== null ? (rate >= 50 ? 'green' : rate > 0 ? '' : 'red') : '';
+      var entryId = entry.id;
+
       html += '<div class="history-card">'
-        + '<div class="flex-between">'
+        // Clickable header
+        + '<div class="history-card-header" onclick="BrandTracker.toggleHistory(' + entryId + ')">'
+        + '<div style="min-width:0;">'
         + '<strong class="text-sm">' + brands.map(function(b) { return ApiService.escapeHtml(b); }).join(', ') + '</strong>'
-        + '<span class="badge badge-gray">' + llmNames.length + ' LLMs</span>'
-        + '</div>'
-        + '<div class="history-meta">'
+        + '<div class="history-meta" style="margin-top:3px;">'
         + ApiService.escapeHtml(entry.treatment || '') + (entry.city ? ' · ' + ApiService.escapeHtml(entry.city) : '')
         + ' · ' + new Date(entry.timestamp).toLocaleString('nl-NL')
         + '</div>'
-        + '<div style="margin-top:10px;">';
-      brands.forEach(function(b) {
-        html += '<span class="tag">' + ApiService.escapeHtml(b) + '</span> ';
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+        + (rate !== null ? '<span class="' + rateCls + '" style="font-size:14px;font-weight:700;">' + rate + '%</span>' : '')
+        + '<div style="display:flex;gap:4px;">' + llmNames.map(function(l) { return '<span class="badge badge-gray">' + ApiService.escapeHtml(l) + '</span>'; }).join('') + '</div>'
+        + '<svg id="hist-chevron-' + entryId + '" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;color:var(--text-3);flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>'
+        + '</div>'
+        + '</div>'
+        // Action buttons
+        + '<div class="history-card-actions">'
+        + '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();BrandTracker.rerunTest(' + entryId + ')">Herhalen</button>'
+        + '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();BrandTracker.copyResults(' + entryId + ')">Kopiëren</button>'
+        + '</div>'
+        // Expandable section (lazy-loaded on first open)
+        + '<div id="hist-expand-' + entryId + '" class="history-expand" style="display:none;"></div>'
+        + '</div>';
+    });
+    histDiv.innerHTML = html;
+  },
+
+  _buildHistoryExpandHtml: function(entry) {
+    var brands = entry.brands || [];
+    var llmNames = Object.keys(entry.results || {});
+    if (!llmNames.length) return '<p style="color:var(--text-3);font-size:13px;padding:4px 0;">Geen resultaten opgeslagen.</p>';
+
+    // Summary table
+    var html = '<div class="table-card" style="margin:0 0 16px;">'
+      + '<table class="data-table"><thead><tr><th>Brand</th>'
+      + llmNames.map(function(l) { return '<th>' + ApiService.escapeHtml(l) + '</th>'; }).join('')
+      + '<th>Gem.</th></tr></thead><tbody>';
+    brands.forEach(function(b) {
+      var rates = llmNames.map(function(llm) {
+        var resps = Object.values(entry.results[llm] || {});
+        var h = resps.filter(function(r) { return r && r.toLowerCase().includes(b.toLowerCase()); }).length;
+        return resps.length ? Math.round(h / resps.length * 100) : 0;
       });
-      html += '</div>';
-      if (entry.summary) {
-        html += '<div class="mt-8 text-sm text-muted">' + ApiService.escapeHtml(entry.summary) + '</div>';
+      var avg = rates.length ? Math.round(rates.reduce(function(a, v) { return a + v; }, 0) / rates.length) : 0;
+      var avgCls = avg >= 50 ? 'green' : avg === 0 ? 'red' : '';
+      html += '<tr><td><strong>' + ApiService.escapeHtml(b) + '</strong></td>';
+      rates.forEach(function(r) { html += '<td class="' + (r >= 50 ? 'green' : r === 0 ? 'red' : '') + '">' + r + '%</td>'; });
+      html += '<td class="' + avgCls + '"><strong>' + avg + '%</strong></td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // First 2 responses per LLM
+    llmNames.forEach(function(llm) {
+      var resps = entry.results[llm] || {};
+      var keys = Object.keys(resps);
+      if (!keys.length) return;
+      html += '<div style="margin-bottom:12px;">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:8px;">' + ApiService.escapeHtml(llm) + '</div>';
+      keys.slice(0, 2).forEach(function(k) {
+        var text = resps[k];
+        if (!text) return;
+        var mentioned = ApiService.checkMentions(text, brands).length > 0;
+        html += '<div class="llm-response" style="margin-bottom:8px;">'
+          + '<div class="llm-row"><span class="llm-name">' + ApiService.escapeHtml(llm) + '</span>'
+          + (mentioned ? '<span class="badge badge-green">Vermeld</span>' : '<span class="badge badge-gray">Niet vermeld</span>')
+          + '</div><div class="response-text">' + ApiService.highlightBrands(text, brands) + '</div></div>';
+      });
+      if (keys.length > 2) {
+        html += '<p style="font-size:12px;color:var(--text-3);margin:0 0 4px;">+ ' + (keys.length - 2) + ' meer responses niet weergegeven</p>';
       }
       html += '</div>';
     });
-    histDiv.innerHTML = html;
+    return html;
+  },
+
+  toggleHistory: function(id) {
+    var expandEl = document.getElementById('hist-expand-' + id);
+    var chevronEl = document.getElementById('hist-chevron-' + id);
+    if (!expandEl) return;
+    var isOpen = expandEl.style.display !== 'none';
+    if (isOpen) {
+      expandEl.style.display = 'none';
+      if (chevronEl) chevronEl.style.transform = '';
+    } else {
+      if (!expandEl.dataset.loaded) {
+        var history = ApiService.getHistory();
+        var entry = history.find(function(e) { return e.id === id; });
+        if (entry) {
+          expandEl.innerHTML = BrandTracker._buildHistoryExpandHtml(entry);
+          expandEl.dataset.loaded = '1';
+        }
+      }
+      expandEl.style.display = 'block';
+      if (chevronEl) chevronEl.style.transform = 'rotate(180deg)';
+    }
+  },
+
+  rerunTest: function(id) {
+    var history = ApiService.getHistory();
+    var entry = history.find(function(e) { return e.id === id; });
+    if (!entry) return;
+    var brandsInput = document.getElementById('bt-brands');
+    var treatmentInput = document.getElementById('bt-treatment');
+    var cityInput = document.getElementById('bt-city');
+    if (brandsInput) brandsInput.value = (entry.brands || []).join(', ');
+    if (treatmentInput) treatmentInput.value = entry.treatment || '';
+    if (cityInput) cityInput.value = entry.city || '';
+    BrandTracker.updateTags();
+    BrandTracker.updatePrompts();
+    // Save restored values to form state
+    localStorage.setItem('llm_tracker_form', JSON.stringify({
+      brands: (entry.brands || []).join(', '),
+      treatment: entry.treatment || '',
+      city: entry.city || ''
+    }));
+    var runTabBtn = document.querySelector('[data-tab="run"]');
+    if (runTabBtn) runTabBtn.click();
+    setTimeout(function() { BrandTracker.runTest(); }, 50);
+  },
+
+  copyResults: function(id) {
+    var history = ApiService.getHistory();
+    var entry = history.find(function(e) { return e.id === id; });
+    if (!entry) return;
+    var brands = entry.brands || [];
+    var lines = [
+      'Test resultaten — ' + new Date(entry.timestamp).toLocaleString('nl-NL'),
+      'Brands: ' + brands.join(', '),
+      'Behandeling: ' + (entry.treatment || '') + (entry.city ? ' in ' + entry.city : ''),
+      ''
+    ];
+    Object.keys(entry.results || {}).forEach(function(llm) {
+      var resps = Object.values(entry.results[llm]);
+      var hits = resps.filter(function(r) {
+        return brands.some(function(b) { return r && r.toLowerCase().includes(b.toLowerCase()); });
+      }).length;
+      var rate = resps.length ? Math.round(hits / resps.length * 100) : 0;
+      lines.push('--- ' + llm + ' (mention rate: ' + rate + '%) ---');
+      resps.forEach(function(r, i) {
+        if (r) lines.push('Response ' + (i + 1) + ': ' + ApiService.cleanMarkdown(r).slice(0, 300));
+      });
+      lines.push('');
+    });
+    navigator.clipboard.writeText(lines.join('\n')).then(function() {
+      App.toast('Gekopieerd naar klembord', 'success');
+    }).catch(function() {
+      App.toast('Kopiëren mislukt', 'error');
+    });
   },
 
   clearHistory: function() {
