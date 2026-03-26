@@ -86,6 +86,10 @@ App.registerModule('brand-tracker', {
   <div class="card">
     <div class="section-title">Geplande tests</div>
     <div class="inline-form mb-16">
+      <div class="field">
+        <label for="sch-name">Naam</label>
+        <input type="text" id="sch-name" placeholder="bijv. Skinlab dagelijkse check" />
+      </div>
       <div class="form-grid2">
         <div class="field" style="margin-bottom:0">
           <label for="sch-freq">Frequentie</label>
@@ -95,7 +99,7 @@ App.registerModule('brand-tracker', {
             <option value="monthly">Maandelijks</option>
           </select>
         </div>
-        <div class="field" style="margin-bottom:0" id="sch-weekday-wrap" style="display:none;">
+        <div class="field" id="sch-weekday-wrap" style="margin-bottom:0; display:none;">
           <label for="sch-weekday">Dag van de week</label>
           <select id="sch-weekday">
             <option>Maandag</option>
@@ -136,27 +140,12 @@ App.registerModule('brand-tracker', {
           <tr>
             <th>Naam</th>
             <th>Frequentie</th>
-            <th>Volgende run</th>
+            <th>Tijdstip</th>
             <th>Status</th>
             <th>Actie</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td><strong>Skinlab dagelijkse check</strong></td>
-            <td>Dagelijks</td>
-            <td>Morgen 08:00</td>
-            <td><span class="badge badge-green">Actief</span></td>
-            <td><button class="btn-ghost btn-sm">Verwijderen</button></td>
-          </tr>
-          <tr>
-            <td><strong>Glow Clinic wekelijks</strong></td>
-            <td>Wekelijks (Ma)</td>
-            <td>Ma 27 mrt 09:00</td>
-            <td><span class="badge badge-yellow">Gepauzeerd</span></td>
-            <td><button class="btn-ghost btn-sm">Verwijderen</button></td>
-          </tr>
-        </tbody>
+        <tbody id="sch-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -193,6 +182,7 @@ App.registerModule('brand-tracker', {
 
     BrandTracker.updateKeyWarning();
     BrandTracker.renderHistory();
+    BrandTracker.renderSchedules();
   }
 });
 
@@ -418,7 +408,63 @@ window.BrandTracker = {
   },
 
   saveSchedule: function() {
+    var name = document.getElementById('sch-name');
+    var freq = document.getElementById('sch-freq');
+    var weekday = document.getElementById('sch-weekday');
+    var time = document.getElementById('sch-time');
+    var brands = document.getElementById('sch-brands');
+    var treatment = document.getElementById('sch-treatment');
+
+    if (!name || !name.value.trim()) { App.toast('Geef de planning een naam', 'error'); return; }
+    if (!brands || !brands.value.trim()) { App.toast('Voer minimaal één brand in', 'error'); return; }
+    if (!treatment || !treatment.value.trim()) { App.toast('Voer een behandeling in', 'error'); return; }
+
+    var schedules = JSON.parse(localStorage.getItem('llm_tracker_schedules') || '[]');
+    schedules.push({
+      id: Date.now(),
+      name: name.value.trim(),
+      freq: freq ? freq.value : 'daily',
+      weekday: weekday ? weekday.value : '',
+      time: time ? time.value : '08:00',
+      brands: brands.value.trim(),
+      treatment: treatment.value.trim(),
+      active: true
+    });
+    localStorage.setItem('llm_tracker_schedules', JSON.stringify(schedules));
+    if (name) name.value = '';
+    if (brands) brands.value = '';
+    if (treatment) treatment.value = '';
+    BrandTracker.renderSchedules();
     App.toast('Geplande test opgeslagen', 'success');
+  },
+
+  renderSchedules: function() {
+    var tbody = document.getElementById('sch-tbody');
+    if (!tbody) return;
+    var schedules = JSON.parse(localStorage.getItem('llm_tracker_schedules') || '[]');
+    if (!schedules.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-3); padding:20px;">Geen geplande tests</td></tr>';
+      return;
+    }
+    var freqLabel = { daily: 'Dagelijks', weekly: 'Wekelijks', monthly: 'Maandelijks' };
+    tbody.innerHTML = schedules.map(function(s) {
+      var freq = freqLabel[s.freq] || s.freq;
+      if (s.freq === 'weekly' && s.weekday) freq += ' (' + s.weekday.slice(0,2) + ')';
+      return '<tr>'
+        + '<td><strong>' + ApiService.escapeHtml(s.name) + '</strong></td>'
+        + '<td>' + freq + '</td>'
+        + '<td>' + (s.time || '08:00') + '</td>'
+        + '<td><span class="badge ' + (s.active ? 'badge-green' : 'badge-yellow') + '">' + (s.active ? 'Actief' : 'Gepauzeerd') + '</span></td>'
+        + '<td><button class="btn-ghost btn-sm" onclick="BrandTracker.deleteSchedule(' + s.id + ')">Verwijderen</button></td>'
+        + '</tr>';
+    }).join('');
+  },
+
+  deleteSchedule: function(id) {
+    var schedules = JSON.parse(localStorage.getItem('llm_tracker_schedules') || '[]');
+    localStorage.setItem('llm_tracker_schedules', JSON.stringify(schedules.filter(function(s) { return s.id !== id; })));
+    BrandTracker.renderSchedules();
+    App.toast('Planning verwijderd', 'success');
   },
 
   runTest: async function() {
@@ -536,6 +582,7 @@ window.BrandTracker = {
       App.toast('Test succesvol uitgevoerd!', 'success');
     }
 
+    if (window.AlertsModule) AlertsModule.checkAndCreateAlerts(entry, brands);
     BrandTracker.renderResults(entry, brands);
     BrandTracker.renderHistory();
   }

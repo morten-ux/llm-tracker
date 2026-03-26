@@ -2,14 +2,21 @@ var ApiService = (function() {
   var SETTINGS_KEY = 'llm_tracker_settings';
   var HISTORY_KEY = 'llm_tracker_history';
 
+  var DEFAULTS = { openaiKey: '', geminiKey: '', webSearch: true, alertThreshold: 30, autoRepeat: false, emailResults: false, darkMode: false, notifCritical: true, notifWeekly: true, notifBenchmark: false };
+
   function getSettings() {
-    try { var s = localStorage.getItem(SETTINGS_KEY); return s ? JSON.parse(s) : { openaiKey: '', geminiKey: '' }; } catch(e) { return { openaiKey: '', geminiKey: '' }; }
+    try {
+      var s = localStorage.getItem(SETTINGS_KEY);
+      var saved = s ? JSON.parse(s) : {};
+      // Merge with defaults so new keys always exist
+      return Object.assign({}, DEFAULTS, saved);
+    } catch(e) { return Object.assign({}, DEFAULTS); }
   }
   function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
   function getHistory() {
     try { var h = localStorage.getItem(HISTORY_KEY); return h ? JSON.parse(h) : []; } catch(e) { return []; }
   }
-  function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 20))); }
+  function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 200))); }
 
   function escapeHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -39,13 +46,12 @@ var ApiService = (function() {
   }
 
   async function queryAnthropic(prompt) {
+    var s = getSettings();
+    var body = { model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] };
+    if (s.webSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
     var res = await fetch('https://llm-proxy.morten-ff3.workers.dev/', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 2000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      body: JSON.stringify(body),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error.message);

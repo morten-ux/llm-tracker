@@ -58,7 +58,7 @@ App.registerModule('settings', {
         <div class="toggle-sub">Herhaal de laatste test automatisch bij openen</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" />
+        <input type="checkbox" id="s-toggle-autorepeat" />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -68,7 +68,7 @@ App.registerModule('settings', {
         <div class="toggle-sub">Stuur testresultaten naar je e-mailadres</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" />
+        <input type="checkbox" id="s-toggle-email" />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -78,7 +78,7 @@ App.registerModule('settings', {
         <div class="toggle-sub">Gebruik web search tool voor actuele resultaten</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" checked />
+        <input type="checkbox" id="s-toggle-websearch" />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -88,7 +88,7 @@ App.registerModule('settings', {
         <div class="toggle-sub">Schakel over naar een donker thema</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" />
+        <input type="checkbox" id="s-toggle-darkmode" />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -104,7 +104,7 @@ App.registerModule('settings', {
         <div class="toggle-sub">Ontvang meldingen bij kritieke drempelwaarden</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" checked />
+        <input type="checkbox" id="s-toggle-notifcritical" />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -114,7 +114,7 @@ App.registerModule('settings', {
         <div class="toggle-sub">Ontvang elke maandag een samenvatting</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" checked />
+        <input type="checkbox" id="s-toggle-notifweekly" />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -124,9 +124,19 @@ App.registerModule('settings', {
         <div class="toggle-sub">Meldingen bij wijzigingen in concurrent scores</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" />
+        <input type="checkbox" id="s-toggle-notifbenchmark" />
         <span class="toggle-slider"></span>
       </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Alert drempelwaarde</div>
+        <div class="toggle-sub">Melding wanneer mention rate daalt onder dit percentage</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <input type="number" id="s-alert-threshold" min="0" max="100" style="width:64px; text-align:center;" />
+        <span style="font-size:13px; color:var(--text-3);">%</span>
+      </div>
     </div>
   </div>
 </div>
@@ -142,14 +152,13 @@ App.registerModule('settings', {
     `;
   },
   init: function() {
-    // Load saved API keys
     var s = ApiService.getSettings();
+
+    // API keys
     var openaiEl = document.getElementById('s-openai');
     var geminiEl = document.getElementById('s-gemini');
     if (openaiEl && s.openaiKey) openaiEl.value = s.openaiKey;
     if (geminiEl && s.geminiKey) geminiEl.value = s.geminiKey;
-
-    // Save keys on input
     function saveKeys() {
       var settings = ApiService.getSettings();
       if (openaiEl) settings.openaiKey = openaiEl.value;
@@ -158,6 +167,41 @@ App.registerModule('settings', {
     }
     if (openaiEl) openaiEl.addEventListener('input', saveKeys);
     if (geminiEl) geminiEl.addEventListener('input', saveKeys);
+
+    // Toggles: [elementId, settingKey, optional callback]
+    var toggles = [
+      ['s-toggle-autorepeat',    'autoRepeat'],
+      ['s-toggle-email',         'emailResults'],
+      ['s-toggle-websearch',     'webSearch'],
+      ['s-toggle-darkmode',      'darkMode',       function(val) { document.documentElement.classList.toggle('dark', val); }],
+      ['s-toggle-notifcritical', 'notifCritical'],
+      ['s-toggle-notifweekly',   'notifWeekly'],
+      ['s-toggle-notifbenchmark','notifBenchmark'],
+    ];
+    toggles.forEach(function(t) {
+      var el = document.getElementById(t[0]);
+      if (!el) return;
+      el.checked = !!s[t[1]];
+      el.addEventListener('change', function() {
+        var settings = ApiService.getSettings();
+        settings[t[1]] = el.checked;
+        ApiService.saveSettings(settings);
+        if (t[2]) t[2](el.checked);
+        App.toast('Instellingen opgeslagen', 'success');
+      });
+    });
+
+    // Alert threshold
+    var thresholdEl = document.getElementById('s-alert-threshold');
+    if (thresholdEl) {
+      thresholdEl.value = s.alertThreshold !== undefined ? s.alertThreshold : 30;
+      thresholdEl.addEventListener('change', function() {
+        var settings = ApiService.getSettings();
+        settings.alertThreshold = parseInt(thresholdEl.value) || 30;
+        ApiService.saveSettings(settings);
+        App.toast('Drempelwaarde opgeslagen', 'success');
+      });
+    }
 
     // Profile save
     var profileSave = document.getElementById('s-profile-save');

@@ -64,10 +64,16 @@ var App = (function() {
   }
 
   function updateNotificationBadge(count) {
-    var badge = document.getElementById('notif-badge');
-    if (!badge) return;
-    if (count > 0) { badge.textContent = count; badge.style.display = 'flex'; }
-    else badge.style.display = 'none';
+    var topbarBadge = document.getElementById('notif-badge');
+    var sidebarBadge = document.getElementById('sidebar-alerts-badge');
+    if (topbarBadge) {
+      if (count > 0) { topbarBadge.textContent = count; topbarBadge.style.display = 'flex'; }
+      else topbarBadge.style.display = 'none';
+    }
+    if (sidebarBadge) {
+      if (count > 0) { sidebarBadge.textContent = count; sidebarBadge.style.display = ''; }
+      else sidebarBadge.style.display = 'none';
+    }
   }
 
   function closeDropdowns() {
@@ -131,7 +137,7 @@ var App = (function() {
     initTopbar();
     navigate('brand-tracker');
     var alerts = JSON.parse(localStorage.getItem('llm_tracker_alerts') || '[]');
-    updateNotificationBadge(alerts.filter(function(a) { return !a.dismissed; }).length || 3);
+    updateNotificationBadge(alerts.filter(function(a) { return !a.dismissed; }).length);
   }
 
   return { registerModule: registerModule, navigate: navigate, toast: toast, updateNotificationBadge: updateNotificationBadge, icon: icon, init: init };

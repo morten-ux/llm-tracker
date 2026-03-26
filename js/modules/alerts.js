@@ -151,3 +151,56 @@ App.registerModule('alerts', {
     }
   }
 });
+
+window.AlertsModule = {
+  checkAndCreateAlerts: function(entry, brands) {
+    var s = ApiService.getSettings();
+    var threshold = s.alertThreshold !== undefined ? s.alertThreshold : 30;
+    var llmNames = Object.keys(entry.results || {});
+    var newAlerts = [];
+
+    brands.forEach(function(brand) {
+      llmNames.forEach(function(llm) {
+        var responses = entry.results[llm];
+        var total = Object.keys(responses).length;
+        if (!total) return;
+        var mentions = Object.values(responses).filter(function(r) {
+          return r && r.toLowerCase().includes(brand.toLowerCase());
+        }).length;
+        var rate = Math.round((mentions / total) * 100);
+
+        if (rate === 0) {
+          newAlerts.push({ type: 'critical', brand: brand, llm: llm, rate: rate, threshold: threshold });
+        } else if (rate < threshold) {
+          newAlerts.push({ type: 'warning', brand: brand, llm: llm, rate: rate, threshold: threshold });
+        } else if (rate >= 75) {
+          newAlerts.push({ type: 'success', brand: brand, llm: llm, rate: rate, threshold: threshold });
+        }
+      });
+    });
+
+    if (!newAlerts.length) return;
+
+    var stored = localStorage.getItem('llm_tracker_alerts');
+    var existing = [];
+    try { existing = stored ? JSON.parse(stored) : []; } catch(e) { existing = []; }
+    // Remove seeded dummy alerts on first real run
+    existing = existing.filter(function(a) { return !!a.real; });
+
+    var now = new Date();
+    var timeStr = now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) + ' ' + now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    var nextId = Date.now();
+
+    newAlerts.forEach(function(a) {
+      var title;
+      if (a.type === 'critical') title = a.brand + ' niet vermeld door ' + a.llm + ' (0%)';
+      else if (a.type === 'warning') title = a.brand + ' mention rate ' + a.rate + '% op ' + a.llm + ' (drempel: ' + a.threshold + '%)';
+      else title = a.brand + ' mention rate ' + a.rate + '% op ' + a.llm;
+      existing.unshift({ id: nextId++, type: a.type, title: title, meta: a.llm + ' · ' + timeStr, dismissed: false, real: true });
+    });
+
+    localStorage.setItem('llm_tracker_alerts', JSON.stringify(existing));
+    var undismissed = existing.filter(function(a) { return !a.dismissed; }).length;
+    App.updateNotificationBadge(undismissed);
+  }
+};
