@@ -59,6 +59,20 @@ App.registerModule('analytics', {
 
   _renderStats: function(days) {
     var history = this._filterHistory(days);
+    var allHistory = ApiService.getHistory();
+    var noticeEl = document.getElementById('an-notice');
+    if (noticeEl) {
+      if (!allHistory.length) {
+        noticeEl.style.display = 'block';
+        noticeEl.innerHTML = '<div class="empty-banner">'
+          + '<div class="empty-banner-icon">' + App.icon('barChart', 20) + '</div>'
+          + '<div><strong>Nog geen data</strong><p>Voer een test uit in Brand Tracker om analytics te bekijken.</p></div>'
+          + '<button class="btn btn-sm" onclick="App.navigate(\'brand-tracker\')">Naar Brand Tracker</button>'
+          + '</div>';
+      } else {
+        noticeEl.style.display = 'none';
+      }
+    }
     var stats = this._computeStats(history);
 
     document.getElementById('an-total').textContent = stats.totalHits;
@@ -140,6 +154,8 @@ App.registerModule('analytics', {
     </div>
   </div>
 </div>
+
+<div id="an-notice" style="display:none; margin-bottom:20px;"></div>
 
 <div class="stat-grid">
   <div class="stat-card">

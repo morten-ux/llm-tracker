@@ -73,6 +73,7 @@ App.registerModule('brand-tracker', {
         Test uitvoeren
       </button>
     </div>
+    <div id="bt-progress" style="display:none; margin-top:12px;"></div>
   </div>
 
   <div id="bt-results" style="display:none; margin-top:20px;"></div>
@@ -179,6 +180,26 @@ App.registerModule('brand-tracker', {
 
     var runBtn = document.getElementById('bt-run');
     if (runBtn) runBtn.addEventListener('click', function() { BrandTracker.runTest(); });
+
+    // Restore persisted form state
+    var FORM_KEY = 'llm_tracker_form';
+    try {
+      var savedForm = JSON.parse(localStorage.getItem(FORM_KEY) || '{}');
+      if (savedForm.brands && brandsInput) { brandsInput.value = savedForm.brands; BrandTracker.updateTags(); BrandTracker.updatePrompts(); }
+      if (savedForm.treatment && treatmentInput) { treatmentInput.value = savedForm.treatment; BrandTracker.updatePrompts(); }
+      if (savedForm.city && cityInput) { cityInput.value = savedForm.city; }
+    } catch(e) {}
+    // Persist form state on every input
+    function _saveForm() {
+      localStorage.setItem(FORM_KEY, JSON.stringify({
+        brands: brandsInput ? brandsInput.value : '',
+        treatment: treatmentInput ? treatmentInput.value : '',
+        city: cityInput ? cityInput.value : ''
+      }));
+    }
+    if (brandsInput) brandsInput.addEventListener('input', _saveForm);
+    if (treatmentInput) treatmentInput.addEventListener('input', _saveForm);
+    if (cityInput) cityInput.addEventListener('input', _saveForm);
 
     BrandTracker.updateKeyWarning();
     BrandTracker.renderHistory();
@@ -361,7 +382,17 @@ window.BrandTracker = {
     if (!histDiv) return;
     var history = ApiService.getHistory();
     if (!history.length) {
-      histDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><h3>Geen geschiedenis</h3><p>Voer een test uit om resultaten op te slaan.</p></div>';
+      histDiv.innerHTML = '<div class="empty-state">'
+        + '<div class="empty-state-icon">' + App.icon('clock', 36) + '</div>'
+        + '<h3>Nog geen tests uitgevoerd</h3>'
+        + '<p>Voer je eerste test uit om te zien hoe jouw brand scoort bij ChatGPT, Gemini en Claude.</p>'
+        + '<button class="btn mt-16" id="empty-go-run-btn">Eerste test uitvoeren</button>'
+        + '</div>';
+      var emptyBtn = document.getElementById('empty-go-run-btn');
+      if (emptyBtn) emptyBtn.addEventListener('click', function() {
+        var runTab = document.querySelector('[data-tab="run"]');
+        if (runTab) runTab.click();
+      });
       return;
     }
     var html = '<div class="flex-between mb-16">'
@@ -467,6 +498,22 @@ window.BrandTracker = {
     App.toast('Planning verwijderd', 'success');
   },
 
+  _showProgress: function(steps) {
+    var el = document.getElementById('bt-progress');
+    if (!el) return;
+    if (!steps || !steps.length) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    var icons = { done: App.icon('check', 12), error: App.icon('x', 12), running: App.icon('clock', 12), pending: '' };
+    el.innerHTML = '<div class="test-progress">'
+      + '<span class="test-progress-label">Testen:</span>'
+      + steps.map(function(s) {
+          return '<span class="progress-step progress-step-' + (s.state || 'pending') + '">'
+            + (icons[s.state] || '') + ' ' + ApiService.escapeHtml(s.label)
+            + '</span>';
+        }).join('')
+      + '</div>';
+  },
+
   runTest: async function() {
     var brandsInput = document.getElementById('bt-brands');
     var treatmentInput = document.getElementById('bt-treatment');
@@ -499,12 +546,17 @@ window.BrandTracker = {
       prompts = BrandTracker.getPrompts();
     }
 
+    var s = ApiService.getSettings();
+    var _steps = [{ label: 'Claude', state: 'pending' }];
+    if (s.openaiKey) _steps.push({ label: 'ChatGPT', state: 'pending' });
+    if (s.geminiKey) _steps.push({ label: 'Gemini', state: 'pending' });
+    BrandTracker._showProgress(_steps);
+
     if (runBtn) {
       runBtn.disabled = true;
       runBtn.textContent = 'Bezig...';
     }
 
-    var s = ApiService.getSettings();
     var entry = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
@@ -517,7 +569,10 @@ window.BrandTracker = {
     var errors = [];
 
     // Always query Anthropic/Claude
+    _steps[0].state = 'running';
+    BrandTracker._showProgress(_steps);
     entry.results['Claude'] = {};
+    var _claudeErr = false;
     for (var i = 0; i < Math.min(prompts.length, 5); i++) {
       try {
         var resp = await ApiService.queryAnthropic(prompts[i]);
@@ -525,16 +580,22 @@ window.BrandTracker = {
       } catch(e) {
         entry.results['Claude'][i] = '';
         errors.push('Claude: ' + e.message);
+        _claudeErr = true;
       }
       // Small delay to avoid rate limiting
       if (i < Math.min(prompts.length, 5) - 1) {
         await new Promise(function(resolve) { setTimeout(resolve, 500); });
       }
     }
+    _steps[0].state = _claudeErr ? 'error' : 'done';
+    BrandTracker._showProgress(_steps);
 
     // Query OpenAI if key available
     if (s.openaiKey) {
+      var _chatgptStep = _steps.find(function(s) { return s.label === 'ChatGPT'; });
+      if (_chatgptStep) { _chatgptStep.state = 'running'; BrandTracker._showProgress(_steps); }
       entry.results['ChatGPT'] = {};
+      var _chatgptErr = false;
       for (var j = 0; j < Math.min(prompts.length, 5); j++) {
         try {
           var resp2 = await ApiService.queryOpenAI(prompts[j]);
@@ -542,16 +603,21 @@ window.BrandTracker = {
         } catch(e) {
           entry.results['ChatGPT'][j] = '';
           errors.push('ChatGPT: ' + e.message);
+          _chatgptErr = true;
         }
         if (j < Math.min(prompts.length, 5) - 1) {
           await new Promise(function(resolve) { setTimeout(resolve, 300); });
         }
       }
+      if (_chatgptStep) { _chatgptStep.state = _chatgptErr ? 'error' : 'done'; BrandTracker._showProgress(_steps); }
     }
 
     // Query Gemini if key available
     if (s.geminiKey) {
+      var _geminiStep = _steps.find(function(s) { return s.label === 'Gemini'; });
+      if (_geminiStep) { _geminiStep.state = 'running'; BrandTracker._showProgress(_steps); }
       entry.results['Gemini'] = {};
+      var _geminiErr = false;
       for (var k = 0; k < Math.min(prompts.length, 5); k++) {
         try {
           var resp3 = await ApiService.queryGemini(prompts[k]);
@@ -559,11 +625,13 @@ window.BrandTracker = {
         } catch(e) {
           entry.results['Gemini'][k] = '';
           errors.push('Gemini: ' + e.message);
+          _geminiErr = true;
         }
         if (k < Math.min(prompts.length, 5) - 1) {
           await new Promise(function(resolve) { setTimeout(resolve, 300); });
         }
       }
+      if (_geminiStep) { _geminiStep.state = _geminiErr ? 'error' : 'done'; BrandTracker._showProgress(_steps); }
     }
 
     // Save to history

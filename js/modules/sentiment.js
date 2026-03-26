@@ -111,6 +111,22 @@ window.SentimentModule = {
 
   render: function(llmFilter) {
     var history = ApiService.getHistory();
+
+    if (!history.length) {
+      var quotesEl = document.getElementById('sent-quotes');
+      if (quotesEl) quotesEl.innerHTML = '<div class="empty-banner">'
+        + '<div class="empty-banner-icon">' + App.icon('smile', 20) + '</div>'
+        + '<div><strong>Nog geen sentiment data</strong><p>Voer een test uit om te zien hoe LLMs over jouw brand schrijven.</p></div>'
+        + '<button class="btn btn-sm" onclick="App.navigate(\'brand-tracker\')">Naar Brand Tracker</button>'
+        + '</div>';
+      ['sent-pos','sent-neu','sent-neg','sent-analyzed'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.textContent = '—';
+      });
+      var llmBarsEl = document.getElementById('sent-llm-bars');
+      if (llmBarsEl) llmBarsEl.innerHTML = '<div style="font-size:13px;color:var(--text-3);">Nog geen data</div>';
+      return;
+    }
+
     var quotes = [];
 
     history.forEach(function(entry) {

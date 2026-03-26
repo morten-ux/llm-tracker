@@ -134,6 +134,15 @@ var App = (function() {
       });
     }
     document.addEventListener('click', closeDropdowns);
+
+    // Cmd+K / Ctrl+K focuses search
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        var searchInput = document.getElementById('topbar-search');
+        if (searchInput) { searchInput.focus(); searchInput.select(); }
+      }
+    });
   }
 
   function init() {

@@ -135,6 +135,15 @@ window.CompetitorsModule = {
     var thead = document.getElementById('comp-thead');
     if (!tbody) return;
 
+    if (!ApiService.getHistory().length) {
+      tbody.innerHTML = '<tr><td colspan="4"><div class="empty-banner" style="margin:8px 0;">'
+        + '<div class="empty-banner-icon">' + App.icon('users', 18) + '</div>'
+        + '<div><strong>Nog geen testdata</strong><p>Voer een test uit om concurrenten te vergelijken.</p></div>'
+        + '<button class="btn btn-sm" onclick="App.navigate(\'brand-tracker\')">Naar Brand Tracker</button>'
+        + '</div></td></tr>';
+      return;
+    }
+
     var comps = this._getCompetitors();
     var myBrand = (ApiService.getSettings().myBrand || '').toLowerCase();
     var history = ApiService.getHistory();
